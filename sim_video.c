@@ -534,7 +534,8 @@ vid_beep_setup (400, 660);
 memset (&event, 0, sizeof (event));
 
 while (1) {
-    int status = SDL_WaitEvent (&event);
+    /* Temporary hack for BESM6 panel, doesn't affect other simulators */
+    int status = SDL_WaitEventTimeout (&event, 200);
     if (status == 1) {
         if (event.type == SDL_USEREVENT) {
             if (event.user.code == EVENT_EXIT)

@@ -38,6 +38,10 @@ _ReSharper*/
 *#
 BIN/
 ipch/
+# Visual Studio, Visual Code directories:
+.vscode/
+.vs/
+build/
 # We only care about specific files in the Visual Studio Projects 
 # folder.  Things which are there on the fly to support debugging 
 # or other things we don't want git to manage.
@@ -45,5 +49,4 @@ Visual Studio Projects/*
 !Visual Studio Projects/*.vcproj
 !Visual Studio Projects/*.sln
 !Visual Studio Projects/0ReadMe_Projects.txt
-
 
