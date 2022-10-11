@@ -11,6 +11,13 @@ if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR "Preventing in-tree source build.")
 endif ()
 
+# Places to look for CMake modules/includes
+set(SIMH_INCLUDE_PATH_LIST ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${SIMH_INCLUDE_PATH_LIST})
+message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+
+include(vcpkg-setup)
+
 ## Note: pthreads4w requires 3.14 or better.
 cmake_minimum_required(VERSION 3.14)
 
@@ -26,6 +33,13 @@ if (POLICY CMP0091)
     set(MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+## SDL2 on Ubuntu 16 has trailing spaces in the link libraries. Temporarily
+## turn on the OLD policy which silently strips the spaces. Need to re-evaluate
+## this because the OLD policy will disappear at some point.
+## if (POLICY CMP0004)
+## cmake_policy(SET CMP0004 OLD)
+## endif()
+
 set(SIMH_VERSION "4.0.0")
 project(simh VERSION "${SIMH_VERSION}" LANGUAGES C CXX)
 
@@ -40,11 +54,6 @@ if (NOT CMAKE_CONFIGURATION_TYPES)
         message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
     endif (NOT CMAKE_BUILD_TYPE)
 endif ()
-
-# Places to look for CMake modules/includes
-set(SIMH_INCLUDE_PATH_LIST ${CMAKE_SOURCE_DIR}/cmake)
-list(APPEND CMAKE_MODULE_PATH ${SIMH_INCLUDE_PATH_LIST})
-message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
 ## Deal with platform quirkiness
 include(platform_quirks)
@@ -68,41 +77,7 @@ if (NOT version_minor)
 endif (NOT version_minor)
 string(APPEND SIMH_SYSTEM_ID "-${version_major}.${version_minor}")
 
-# SIMH_DEP_TOPDIR: This is the top-level directory where dependencies live. It's cached so that
-# scripts (e.g., cmake-builder.ps1) can update PATH to find shared objects and DLLs.
-#
-# Only add to search paths if NO_DEP_BUILD is False
-set(SIMH_DEP_TOPDIR
-    ${CMAKE_SOURCE_DIR}/cmake/dependencies/${SIMH_SYSTEM_ID}
-    CACHE PATH "Top-level directory for SIMH library dependencies")
 
-# SIMH_DEP_PATCHES: This is where various external package patches live. Also cached just in case
-# it's needed by a script.
-set(SIMH_DEP_PATCHES ${CMAKE_SOURCE_DIR}/cmake/patches
-        CACHE PATH "Top-level directory for external dependency patches")
-
-##-- Options --##
-if (NOT DEFINED NO_DEP_BUILD)
-    ## For Windows, always build dependencies
-    if (WIN32 AND NOT DEFINED ENV{MSYSTEM})
-        message(STATUS "Setting NO_DEP_BUILD to FALSE, will BUILD missing dependencies")
-        set(NO_DEP_BUILD_OPTVAL FALSE)
-    else ()
-        message(STATUS "Setting NO_DEP_BUILD to TRUE, will NOT BUILD missing dependencies")
-        set(NO_DEP_BUILD_OPTVAL TRUE)
-    endif ()
-else ()
-    set(NO_DEP_BUILD_OPTVAL ${NO_DEP_BUILD})
-    if (NO_DEP_BUILD_OPTVAL)
-        message(STATUS "Missing dependencies WILL NOT BE BUILT.")
-    else ()
-        message(STATUS "Missing dependencies WILL BE BUILT.")
-    endif ()
-endif ()
-
-option(NO_DEP_BUILD
-       "Enable (=1)/disable (=0) Dependency library builds (def: enabled)"
-       ${NO_DEP_BUILD_OPTVAL})
 option(BUILD_SHARED_DEPS
        "Enable (=1)/disable (=0) building dependencies as shared libraries/DLLs (def: disabled)"
        FALSE)
@@ -146,27 +121,9 @@ option(WINAPI_DEPRECATION
        "Show (=1)/mute (=0) Various WinAPI deprecation warning (def: mute.)"
        FALSE)
 
-# Places where CMake should look for dependent package configuration fragments and artifacts:
-set(SIMH_PREFIX_PATH_LIST)
-if (NOT NO_DEP_BUILD)
-    list(APPEND CMAKE_INCLUDE_PATH ${SIMH_DEP_TOPDIR})
-    list(APPEND SIMH_PREFIX_PATH_LIST ${SIMH_DEP_TOPDIR})
-    list(APPEND CMAKE_PREFIX_PATH ${SIMH_PREFIX_PATH_LIST})
-endif ()
-
 ## Additional command line arguments for dependencies. Need this because Powershell will report
 ## an error if anything is sent to stderr and $ErrorDefaultAction is set to "Stop".
 set(DEP_CMAKE_ARGS "-Wno-dev" "--no-warn-unused-cli")
-
-## build-stage directory hierarchy for dependency installs:
-if (NOT NO_DEP_BUILD AND NOT EXISTS ${SIMH_DEP_TOPDIR})
-    message(STATUS "Creating dependency library directory hierarchy")
-    execute_process(
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${SIMH_DEP_TOPDIR} ${SIMH_DEP_TOPDIR}/include ${SIMH_DEP_TOPDIR}/lib 
-                    ${SIMH_DEP_TOPDIR}/bin
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
-endif ()
 
 ## Default install location is ${CMAKE_SOURCE_DIR}/BIN if not otherwise set
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -177,14 +134,6 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_BINDIR "BIN/Win32/$<CONFIG>" CACHE PATH "BIN/Win32/<config> default binary install directory" FORCE)
   endif ()
 endif()
-
-if (NOT NO_DEP_BUILD)
-    # Make sure we can include and link from the dependency directory
-    list(APPEND CMAKE_LIBRARY_PATH ${SIMH_DEP_TOPDIR}/lib)
-    link_directories(${SIMH_DEP_TOPDIR}/lib)
-    list(APPEND CMAKE_INCLUDE_PATH ${SIMH_DEP_TOPDIR}/include)
-    include_directories(${CMAKE_SOURCE_DIR} ${SIMH_DEP_TOPDIR}/include)
-endif ()
 
 set(EXTRA_CFLAGS "")
 
@@ -233,6 +182,12 @@ if (POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+
+# Places where CMake should look for dependent package configuration fragments and artifacts:
+list(APPEND CMAKE_INCLUDE_PATH ${CMAKE_BINARY_DIR}/include)
+## list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
+
+
 # Find packages, arrange for dependency download/compile/install:
 #
 # SIMH_BUILD_DEPS is the list of the dependecies' names, for pretty-printing.
@@ -259,7 +214,6 @@ include(FindPackageHandleStandardArgs)
 
 # SIMH local:
 include(git-commit-id)
-include(build_dep_matrix)
 include(os-features)
 include(dep-locate)
 include(dep-targets)
@@ -352,7 +306,7 @@ unset(_feature_text)
 
 unset(ROM_STATUS)
 
-if (NO_DEP_BUILD AND SIMH_BUILD_DEPS)
+if (SIMH_BUILD_DEPS)
     ## Don't build dependencies. Just wail about them.
     message("")
     message("Missing SIMH dependencies:")
@@ -370,26 +324,10 @@ if (NO_DEP_BUILD AND SIMH_BUILD_DEPS)
     ## TODO: Assume that these dependencies are optional?
 endif ()
 
-if (NOT DEFINED DO_DEPENDENCY_BUILD OR SIMH_BUILD_DEPS)
-    if (DEFINED DO_DEPENDENCY_BUILD AND NOT DO_DEPENDENCY_BUILD AND SIMH_BUILD_DEPS)
-        message(FATAL_ERROR "Dependency libraries did not build successfully!!??")
-    endif()
-
-    if (SIMH_BUILD_DEPS)
-        message(STATUS "Building dependency libraries as a superbuild")
-        set(DO_DEPENDENCY_BUILD ON CACHE BOOL "Superbuild flag" FORCE)
-    else ()
-        set(DO_DEPENDENCY_BUILD OFF CACHE BOOL "Superbuild flag" FORCE)
-    endif ()
-else ()
-    set(DO_DEPENDENCY_BUILD ${DO_DEPENDENCY_BUILD} CACHE BOOL "Superbuild flag" FORCE)
-endif ()
-
-if (NOT DO_DEPENDENCY_BUILD)
-    include (add_simulator)
-    if (WITH_SLIRP)
-      add_subdirectory(slirp)
-    endif (WITH_SLIRP)
+include (add_simulator)
+if (WITH_SLIRP)
+  add_subdirectory(slirp)
+endif (WITH_SLIRP)
 
 ## Don't delete yet ##    set(Python_ADDITIONAL_VERSIONS 3)
 ## Don't delete yet ##    include(FindPythonInterp)
@@ -423,56 +361,9 @@ if (NOT DO_DEPENDENCY_BUILD)
 ## Don't delete yet ##        endif (NOT PYTHONINTERP_FOUND OR PYTHON_VERSION_MAJOR LESS 3)
 ## Don't delete yet ##    endif ()
 
-    message(STATUS "Adding simulators")
-    include(simh-simulators)
+message(STATUS "Adding simulators")
+include(simh-simulators)
 
-    # Install the DLLs alongside the binaries
-    if (WIN32 AND BUILD_SHARED_DEPS AND EXISTS ${SIMH_DEP_TOPDIR}/bin)
-       file(GLOB SIMH_DLLS ${SIMH_DEP_TOPDIR}/bin/*.dll)
-       install(FILES ${SIMH_DLLS}
-           DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}
-           COMPONENT RUNTIME
-       )
-    endif ()
-
-    # After we know where everything will install, let CPack figure out
-    # how to assemble it into a package file.
-    include(CPack)
-else ()
-    message(STATUS "")
-    message(STATUS "Building the following dependency libraries:")
-    message(STATUS "")
-    foreach(dep ${SIMH_BUILD_DEPS})
-        message(STATUS "    ${dep}")
-    endforeach ()
-    message(STATUS "")
-
-    ExternalProject_Add (simh_superbuild
-        DEPENDS
-            ${SIMH_DEP_TARGETS}
-        SOURCE_DIR
-            ${CMAKE_SOURCE_DIR}
-        CMAKE_ARGS
-            -DDO_DEPENDENCY_BUILD:BOOL=OFF
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        INSTALL_COMMAND ""
-        BINARY_DIR
-            ${CMAKE_CURRENT_BINARY_DIR}
-        USES_TERMINAL_CONFIGURE TRUE
-        USES_TERMINAL_BUILD     TRUE
-    )
-
-    ## Ensure that the next build rechecks the dependency
-    ## libraries that were just built and finds them.
-    unset(Freetype_FOUND CACHE)
-    unset(PCAP_FOUND CACHE)
-    unset(PCRE_FOUND CACHE)
-    unset(PCRE2_FOUND CACHE)
-    unset(PNG_FOUND CACHE)
-    unset(PTW_FOUND CACHE)
-    unset(SDL2_FOUND CACHE)
-    unset(SDL2_ttf_FOUND CACHE)
-    unset(ZLIB_FOUND CACHE)
-endif ()
+# After we know where everything will install, let CPack figure out
+# how to assemble it into a package file.
+include(CPack)

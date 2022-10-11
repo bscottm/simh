@@ -36,26 +36,34 @@ if (WIN32)
     ## (keep):     add_compile_definitions(USE_ISO_C99_NAMES)
     ## (keep): endif ()
 
-    if (MSVC)
-        ## Flags enabled in the SIMH VS solution (diff redution):
-        ##
-        ## /EHsc: Standard C++ exception handling, extern "C" functions never
-        ##        throw exceptions.
-        ## /FC: Output full path name of source in diagnostics
-        ## /GF: String pooling
-        ## /GL: Whole program optimization
-        ## /Gy: Enable function-level linking
-        ## /Oi: Emit intrinsic functions
-        ## /Ot: Favor fast code
-        ## /Oy: Suppress generating a stack frame (??? why?)
-        add_compile_options("$<$<CONFIG:Release>:/EHsc;/GF;/GL;/Gy;/Oi;/Ot;/Oy;/Zi>")
-        add_compile_options("$<$<CONFIG:Debug>:/EHsc;/FC>")
-        ## /LTCG: Link-Time Code Generation. Pairs with /GL above.
-        add_link_options($<$<CONFIG:Release>:/LTCG>)
-
-        ## Disable automagic add for _MBCS:
-        add_definitions(-D_SBCS)
-    endif ()
+## (keep)    if (MSVC)
+## (keep)        ## Flags enabled in the SIMH VS solution (diff redution):
+## (keep)        ##
+## (keep)        ## /EHsc: Standard C++ exception handling, extern "C" functions never
+## (keep)        ##        throw exceptions.
+## (keep)        ## /FC: Output full path name of source in diagnostics
+## (keep)        ## /GF: String pooling
+## (keep)        ## /GL: Whole program optimization
+## (keep)        ## /Gy: Enable function-level linking
+## (keep)        ## /Oi: Emit intrinsic functions
+## (keep)        ## /Ot: Favor fast code
+## (keep)        ## /Oy: Suppress generating a stack frame (??? why?)
+## (keep)        add_compile_options("$<$<CONFIG:Release>:/EHsc;/GF;/GL;/Gy;/Oi;/Ot;/Oy;/Zi>")
+## (keep)        add_compile_options("$<$<CONFIG:Debug>:/EHsc;/FC>")
+## (keep)        ## /LTCG: Link-Time Code Generation. Pairs with /GL above.
+## (keep)        add_link_options($<$<CONFIG:Release>:/LTCG>)
+## (keep)
+## (keep)        ## Disable automagic _MBCS addition:
+## (keep)        ## add_definitions(-D_SBCS)
+## (keep)    endif ()
+## (keep)
+## (keep)    ## Note: CMAKE_FIND_LIBRARY_PREFIXES is actually blank, by default. If you try
+## (keep)    ## adding the list below, then the libraries HAVE to start with "lib".
+## (keep)    list(APPEND CMAKE_FIND_LIBRARY_PREFIXES "" "lib")
+## (keep)    message(STATUS "CMAKE_FIND_LIBRARY_PREFIXES ${CMAKE_FIND_LIBRARY_PREFIXES}")
+## (keep)
+## (keep)    ## list(APPEND CMAKE_FIND_LIBRARY_SUFFIXES ".dll.a")
+## (keep)    message(STATUS "CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     # The MSVC solution builds as 32-bit, but none of the *nix platforms do.
     #

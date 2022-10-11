@@ -26,11 +26,10 @@ endfunction(findpcre_debug)
 
 find_path(PCRE_INCLUDE_DIR pcre.h
         HINTS
-            ${PC_PCRE_INCLUDEDIR}
-            ${PC_PCRE_INCLUDE_DIRS}
             ENV PCRE_DIR
         # path suffixes to search inside ENV{PCRE_DIR}
-        PATHS ${PCRE_PATH}
+        PATHS
+            ${PCRE_PATH}
         PATH_SUFFIXES
             pcre
             PCRE
@@ -80,7 +79,6 @@ endif ()
 
 include(SelectLibraryConfigurations)
 select_library_configurations(PCRE)
-select_library_configurations(PCRE_STATIC)
 
 set(PCRE_LIBRARIES ${PCRE_LIBRARY})
 set(PCRE_INCLUDE_DIRS ${PCRE_INCLUDE_DIR})
@@ -98,5 +96,5 @@ find_package_handle_standard_args(
         PCRE_LIBRARY
         PCRE_INCLUDE_DIR
     VERSION_VAR
-	    PCRE_VERSION_STRING
+        PCRE_VERSION_STRING
 )

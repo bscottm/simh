@@ -2588,6 +2588,9 @@ while (_screenshot_stat == -1)
 return _screenshot_stat;
 }
 
+/* On Windows, _USE_MATH_DEFINES makes M_PI visible. */
+#define _USE_MATH_DEFINES
+
 #include <SDL_audio.h>
 #include <math.h>
 

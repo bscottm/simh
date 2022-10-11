@@ -65,13 +65,13 @@ Arguments:
                        (WARNING: Lots of output.)
 -target <simulator>    Build <simulator> as the build target (skips install.)
 
--flavor (2022|vs2022)  Generate build environment for Visual Studio 2022 (default)
--flavor (2019|vs2019)  Generate build environment for Visual Studio 2019
--flavor (2017|vs2017)  Generate build environment for Visual Studio 2017
--flavor (2015|vs2015)  Generate build environment for Visual Studio 2015
--flavor (2013|vs2013)  Generate build environment for Visual Studio 2013
--flavor (2012|vs2012)  Generate build environment for Visual Studio 2012
--flavor (2008|vs2008)  Generate build environment for Visual Studio 2008
+-flavor vs2022         Generate build environment for Visual Studio 2022 (default)
+-flavor vs2019         Generate build environment for Visual Studio 2019
+-flavor vs2017         Generate build environment for Visual Studio 2017
+-flavor vs2015         Generate build environment for Visual Studio 2015
+-flavor vs2013         Generate build environment for Visual Studio 2013
+-flavor vs2012         Generate build environment for Visual Studio 2012
+-flavor vs2008         Generate build environment for Visual Studio 2008
 -flavor mingw          Generate build environment for MinGW GCC/mingw32-make
 -flavor ninja          Generate build environment for MinGW GCC/ninja
 
@@ -98,46 +98,25 @@ class GeneratorInfo
     }
 }
 
-## Yes, I made a mistake by using years for VS instead of something more
-## sensible.
-$cmakeCanonicalFlavors = @{
-    "2022" = "vs2022";
-    "2019" = "vs2019";
-    "2017" = "vs2017";
-    "2015" = "vs2015";
-    "2013" = "vs2013";
-    "2012" = "vs2012";
-    "2008" = "vs2008";
-}
-
-
 $cmakeGenMap = @{
-    "vs2022" = [GeneratorInfo]::new("Visual Studio 17 2022", @("-A", "Win32"));
-    "vs2019" = [GeneratorInfo]::new("Visual Studio 16 2019", @("-A", "Win32"));
-    "vs2017" = [GeneratorInfo]::new("Visual Studio 15 2017", @());
-    "vs2015" = [GeneratorInfo]::new("Visual Studio 14 2015", @());
-    "vs2013" = [GeneratorInfo]::new("Visual Studio 12 2013", @());
-    "vs2012" = [GeneratorInfo]::new("Visual Studio 11 2012", @());
-    "vs2008" = [GeneratorInfo]::new("Visual Studio 9 2008",  @())
-    "mingw"  = [GeneratorInfo]::new("MinGW Makefiles", @());
-    "ninja"  = [GeneratorInfo]::new("Ninja", @())
-}
-
-
-function Get-CanonicalFlavor([string]$flavor)
-{
-    $canonicalFlavor = $cmakeCanonicalFlavors[${flavor}]
-    if ($null -eq $canonicalFlavor) {
-        $canonicalFlavor = $flavor
-    }
-
-    return $canonicalFlavor
+    "vs2022"    = [GeneratorInfo]::new("Visual Studio 17 2022", @("-A", "Win32"));
+    "vs2019"    = [GeneratorInfo]::new("Visual Studio 16 2019", @("-A", "Win32"));
+    ## Maybe when "_xp" patches make it into vcpkg:
+    ## "vs2019-xp" = [GeneratorInfo]::new("Visual Studio 16 2019", @("-A", "Win32", "-T", "v142_xp"));
+    "vs2017"    = [GeneratorInfo]::new("Visual Studio 15 2017", @("-A", "Win32"));
+    ## Maybe when "_xp" patches make it into vcpkg:
+    ## "vs2017-xp" = [GeneratorInfo]::new("Visual Studio 15 2017", @("-A", "Win32", "-T", "v141_xp"));
+    "vs2015"    = [GeneratorInfo]::new("Visual Studio 14 2015", @("-A", "Win32"));
+    "vs2013"    = [GeneratorInfo]::new("Visual Studio 12 2013", @("-A", "Win32"));
+    "vs2012"    = [GeneratorInfo]::new("Visual Studio 11 2012", @());
+    "vs2008"    = [GeneratorInfo]::new("Visual Studio 9 2008",  @())
+    "mingw"     = [GeneratorInfo]::new("MinGW Makefiles", @());
+    "ninja"     = [GeneratorInfo]::new("Ninja", @())
 }
 
 function Get-GeneratorInfo([string]$flavor)
 {
-    $canonicalFlavor = Get-CanonicalFlavor $flavor
-    return $cmakeGenMap[$canonicalFlavor]
+    return $cmakeGenMap[$flavor]
 }
 
 
@@ -262,7 +241,6 @@ the script's path name. You should really not see this message.
     "** ${scriptName}: SIMH top-level source directory is ${simhTopDir}"
 }
 
-$flavor = $(Get-CanonicalFlavor $flavor)
 $buildDir  = "${simhTopDir}\cmake\build-${flavor}"
 $genInfo = $(Get-GeneratorInfo $flavor)
 if ($null -eq $genInfo)

@@ -1,5 +1,5 @@
-cache:
-  - cmake\dependencies -> appveyor.yml, **\CMakeLists.txt, cmake\dep-targets.cmake
+## cache:
+##  - cmake\dependencies -> appveyor.yml, **\CMakeLists.txt, cmake\dep-targets.cmake
 
 ## shallow_clone: true
 ## clone_depth: 50
@@ -9,49 +9,49 @@ environment:
   CMAKE_DIST_DIR: C:/projects/simh/dist
 
   matrix:
-   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
-     SIMH_BUILD_FLAVOR: vs2022
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+      SIMH_BUILD_FLAVOR: vs2022
+      VCPKG_ROOT: C:\tools\vcpkg
+ 
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      SIMH_BUILD_FLAVOR: vs2019
+      VCPKG_ROOT: C:\tools\vcpkg
 
-   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-     SIMH_BUILD_FLAVOR: vs2019
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      SIMH_BUILD_FLAVOR: vs2017
+      VCPKG_ROOT: C:\tools\vcpkg
 
-   - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
-     SIMH_BUILD_FLAVOR: unix
-
-   - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu1604
-     SIMH_BUILD_FLAVOR: unix
-
-   - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu
-     SIMH_BUILD_FLAVOR: unix
-
-    ## (broken cmake)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    ## (broken cmake)       SIMH_BUILD_FLAVOR: vs2017
-    ## (broken cmake) 
-    ## (broken cmake)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-    ## (broken cmake)       SIMH_BUILD_FLAVOR: vs2015
-    ## (broken cmake) 
-    ## (broken cmake)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-    ## (broken cmake)       SIMH_BUILD_FLAVOR: vs2013
-    ## (broken cmake) 
-    ## (broken cmake)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-    ## (broken cmake)       SIMH_BUILD_FLAVOR: vs2012
-    ## (broken cmake) 
-    ## (broken cmake)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-    ## (broken cmake)       SIMH_BUILD_FLAVOR: vs2008
-    ## (broken cmake) 
-    ## (broken cmake)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
-    ## (broken cmake)       SIMH_BUILD_FLAVOR: mingw
-    ## (broken cmake)       MINGW: C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      SIMH_BUILD_FLAVOR: vs2015
+      ## (do the local SIMH install): VCPKG_ROOT: C:\tools\vcpkg
+ 
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
+      SIMH_BUILD_FLAVOR: unix
+ 
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu1604
+      SIMH_BUILD_FLAVOR: unix
+ 
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu
+      SIMH_BUILD_FLAVOR: unix
+    
+    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: vs2013
+    ## (too old for vcpkg) 
+    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: vs2012
+    ## (too old for vcpkg) 
+    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: vs2008
+    ## (too old for vcpkg) 
+    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: mingw
+    ## (too old for vcpkg)       MINGW: C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0
 
     ## Here's how you would build with Ninja. It's going to build the same executables
     ## as the MinGW flavor, which is why it's skipped here.
     # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     #   SIMH_BUILD_FLAVOR: ninja
     #   MINGW: C:\\msys64\\mingw32\\bin
-    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    #   SIMH_BUILD_FLAVOR: 2017
-    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-    #   SIMH_BUILD_FLAVOR: 2015
 
 matrix:
   ## Bail if a job fails, don't start new ones.
@@ -73,8 +73,19 @@ build:
 before_build:
   - ps: |
       if ($isWindows) {
-        if (${env:SIMH_BUILD_FLAVOR} -eq "ninja") { choco install ninja; }
-        if (!(Test-Path -Path cmake\dependencies)) { New-Item -ItemType Directory -Path cmake\dependencies }
+        if (${env:SIMH_BUILD_FLAVOR} -eq "ninja") {
+            choco install ninja
+        }
+
+        ## Update vcpkg -- current version is known to work. The 2019 version
+        ## installs pthreads, but CMake doesn't detect its presence. Hence, the
+        ## workaround.
+        if (![string]::IsNullOrEmpty(${env:VCPKG_ROOT})) {
+            pushd ${env:VCPKG_ROOT}
+            git pull
+            cmd /c .\bootstrap-vcpkg.bat
+            popd
+        }
       }
   - sh: |
       sudo apt-get -y update
@@ -85,7 +96,7 @@ build_script:
   # Run the cmake-builder script all the way through: generate, build, test, install.
   - ps: |
       if ($isWindows) {
-        if (!([string]::IsNullOrEmpty($env:MINGW))) { $env:PATH=$(@(${env:MINGW}, ${env:PATH}) -join ";"); };
+        if (!([String]::IsNullOrEmpty($env:MINGW))) { $env:PATH=$(@(${env:MINGW}, ${env:PATH}) -join ";"); };
         cmake\cmake-builder.ps1 -clean -notest -noinstall -config ${env:CONFIGURATION} -flavor ${env:SIMH_BUILD_FLAVOR}
       }
   - sh: |
