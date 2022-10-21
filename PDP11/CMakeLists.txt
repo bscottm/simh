@@ -60,10 +60,11 @@ add_simulator(pdp11
         pdp11_io_lib.c
         pdp11_rom.c
         pdp11_ch.c
-        ${DISPLAYVT}
+        pdp11_dh.c
         pdp11_ng.c
         pdp11_daz.c
         ${DISPLAYNG}
+        ${DISPLAYVT}
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     DEFINES
