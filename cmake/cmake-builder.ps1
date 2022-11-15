@@ -33,7 +33,9 @@ param (
     [switch] $installOnly    = $false,
     [switch] $verbose        = $false,
     [switch] $windeprecation = $false,
-    [string] $target         = ""
+    [string] $target         = "",
+    [switch] $package        = $false,
+    [switch] $lto            = $false
 )
 
 $scriptName = $(Split-Path -Leaf $PSCommandPath)
@@ -64,16 +66,17 @@ Arguments:
 -verbose               Increase verbosity during build and tests.
                        (WARNING: Lots of output.)
 -target <simulator>    Build <simulator> as the build target (skips install.)
+-lto                   Enable Link Time Optimization in Release builds
+-package               Invoke CPack and package the simulator suite
 
--flavor vs2022         Generate build environment for Visual Studio 2022 (default)
--flavor vs2019         Generate build environment for Visual Studio 2019
--flavor vs2017         Generate build environment for Visual Studio 2017
--flavor vs2015         Generate build environment for Visual Studio 2015
--flavor vs2013         Generate build environment for Visual Studio 2013
--flavor vs2012         Generate build environment for Visual Studio 2012
--flavor vs2008         Generate build environment for Visual Studio 2008
--flavor mingw          Generate build environment for MinGW GCC/mingw32-make
--flavor ninja          Generate build environment for MinGW GCC/ninja
+-flavor vs2022         Build environment => Visual Studio 2022 (default)
+-flavor vs2019         Build environment => Visual Studio 2019
+-flavor vs2019-xp      Build environment => Visual Studio 2019 XP compat
+-flavor vs2017         Build environment => Visual Studio 2017
+-flavor vs2017-xp      Build environment => Visual Studio 2017 XP compat
+-flavor vs2015         Build environment => Visual Studio 2015
+-flavor mingw-make     Build environment => MinGW GCC/mingw32-make
+-flavor mingw-ninja    Build environment => MinGW GCC/ninja
 
 -config Release        Build dependencies and simulators for Release (optimized) (default)
 -config Debug          Build dependencies and simulators for Debug
@@ -89,30 +92,37 @@ Arguments:
 class GeneratorInfo
 {
     [string]  $Generator
+    [bool]    $SingleConfig
+    [bool]    $UCRT
+    [string]  $UCRTVersion
     [string[]]$ArchArgs
 
-    GeneratorInfo([string]$gen, [string[]]$arch)
+    GeneratorInfo([string]$gen, $configFlag, $ucrtFlag, $ucrtVer, [string[]]$arch)
     {
         $this.Generator = $gen
+        $this.SingleConfig = $configFlag
+        $this.UCRT = $ucrtFlag
+        $this.UCRTVersion = $ucrtVer
         $this.ArchArgs  = $arch
     }
 }
 
+## Multiple build configurations selected at compile time
+$multiConfig = $false
+## Single configuration selected at configuration time
+$singleConfig = $true
+
 $cmakeGenMap = @{
-    "vs2022"    = [GeneratorInfo]::new("Visual Studio 17 2022", @("-A", "Win32"));
-    "vs2019"    = [GeneratorInfo]::new("Visual Studio 16 2019", @("-A", "Win32"));
-    ## Maybe when "_xp" patches make it into vcpkg:
-    ## "vs2019-xp" = [GeneratorInfo]::new("Visual Studio 16 2019", @("-A", "Win32", "-T", "v142_xp"));
-    "vs2017"    = [GeneratorInfo]::new("Visual Studio 15 2017", @("-A", "Win32"));
-    ## Maybe when "_xp" patches make it into vcpkg:
-    ## "vs2017-xp" = [GeneratorInfo]::new("Visual Studio 15 2017", @("-A", "Win32", "-T", "v141_xp"));
-    "vs2015"    = [GeneratorInfo]::new("Visual Studio 14 2015", @("-A", "Win32"));
-    "vs2013"    = [GeneratorInfo]::new("Visual Studio 12 2013", @("-A", "Win32"));
-    "vs2012"    = [GeneratorInfo]::new("Visual Studio 11 2012", @());
-    "vs2008"    = [GeneratorInfo]::new("Visual Studio 9 2008",  @())
-    "mingw"     = [GeneratorInfo]::new("MinGW Makefiles", @());
-    "ninja"     = [GeneratorInfo]::new("Ninja", @())
+    "vs2022"      = [GeneratorInfo]::new("Visual Studio 17 2022", $multiConfig,  $false, "",     @("-A", "Win32"));
+    "vs2019"      = [GeneratorInfo]::new("Visual Studio 16 2019", $multiConfig,  $false, "",     @("-A", "Win32"));
+    "vs2019-xp"   = [GeneratorInfo]::new("Visual Studio 16 2019", $multiConfig,  $false, "",     @("-A", "Win32", "-T v141_xp"));
+    "vs2017"      = [GeneratorInfo]::new("Visual Studio 15 2017", $multiConfig,  $false, "",     @("-A", "Win32"));
+    "vs2017-xp"   = [GeneratorInfo]::new("Visual Studio 15 2017", $multiConfig,  $false, "",     @("-A", "Win32", "-T", "v141_xp"));
+    "vs2015"      = [GeneratorInfo]::new("Visual Studio 14 2015", $multiConfig,  $false, "",     @());
+    "mingw-make"  = [GeneratorInfo]::new("MinGW Makefiles",       $singleConfig, $false, "",     @());
+    "mingw-ninja" = [GeneratorInfo]::new("Ninja",                 $singleConfig, $false, "",     @())
 }
+
 
 function Get-GeneratorInfo([string]$flavor)
 {
@@ -128,7 +138,6 @@ if ($help)
 
 ### CTest params:
 ## timeout is 180 seconds
-$ctestParallel = "4"
 $ctestTimeout  = "300"
 
 ## Sanity checking: Check that utilities we expect exist...
@@ -136,6 +145,7 @@ $ctestTimeout  = "300"
 ## with CTest
 $cmakeCmd = $(Get-Command -Name cmake.exe -ErrorAction Ignore).Path
 $ctestCmd = $(Get-Command -Name ctest.exe -ErrorAction Ignore).Path
+$cpackCmd = $(Get-Command -Name cpack.exe -ErrorAction Ignore).Path
 if ($cmakeCmd.Length -gt 0)
 {
     Write-Output "** ${scriptName}: cmake is '${cmakeCmd}'"
@@ -151,6 +161,23 @@ was installed.
 "@
 
     exit 1
+}
+
+if ($package) {
+    if ($cpackCmd.Length -gt 0)
+    {
+        Write-Output "** ${scriptName}: cpack is '${cpackCmd}'"
+    }
+    else {
+        @"
+!! ${scriptName} error:
+
+The 'cpack' command was not found -- unable to package the SIMH simulator
+suite. Please check your CMake installation and PATH environment variable.
+"@
+
+        exit 1
+    }
 }
 
 if (!$testonly)
@@ -177,11 +204,8 @@ if (!$testonly)
     that your PATH environment variables references the directory in which it was
     installed.
 
-    Note: 'mingw32-make' is part of the MinGW-W64 software ecosystem. You may need
-    to open a MSYS or MinGW64 terminal window and use 'pacman' to install it.
-
-    Alternatively, if you use the Scoop package manager, 'scoop install gcc'
-    will install this as part of the current GCC compiler instalation.
+    See the .travis/deps.sh functions mingw64() and ucrt64() for the pacman packages
+    that should be installed.
 "@
             exit 1
         }
@@ -206,7 +230,7 @@ $git_usrbin = "${env:ProgramFiles}\Git\usr\bin"
 $tmp_path = ($tmp_path.Split(';') | Where-Object { $_ -ne "${git_usrbin}"}) -join ';'
 if ($tmp_path -ne ${env:PATH})
 {
-    "** ${scriptName}: Removed ${git_usrbin} from PATH (Git MinGW problem)"
+    Write-Output "** ${scriptName}: Removed ${git_usrbin} from PATH (Git MinGW problem)"
     $env:PATH = $tmp_path
 }
 
@@ -221,7 +245,7 @@ if (Test-Path -Path cmake\dependencies) {
   $bdirs = $(Get-ChildItem -Attribute Directory cmake\dependencies\*).ForEach({ $_.FullName + "\bin" })
   $modPath  = (${env:Path}.Split(';') | Where-Object { $bdirs -notcontains $_ }) -join ';'
   if ($modPath -ne $origPath) {
-    "** ${scriptName}: Removed cmake\dependencies 'bin' directories from PATH."
+    Write-Output "** ${scriptName}: Removed cmake\dependencies 'bin' directories from PATH."
   }
 }
 
@@ -238,7 +262,7 @@ the script's path name. You should really not see this message.
 
     exit 1
 } else {
-    "** ${scriptName}: SIMH top-level source directory is ${simhTopDir}"
+    Write-Output "** ${scriptName}: SIMH top-level source directory is ${simhTopDir}"
 }
 
 $buildDir  = "${simhTopDir}\cmake\build-${flavor}"
@@ -268,6 +292,9 @@ elseif ($installOnly)
 {
     $scriptPhases = @("install")
 }
+elseif ($package) {
+    $scriptPhases = @("package")
+}
 else
 {
   $scriptPhases = @( "generate", "build", "test", "install")
@@ -287,17 +314,18 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     if ((Test-Path -Path ${buildDir}) -and $clean)
     {
         "** ${scriptName}: Removing ${buildDir}"
+        Write-Output "** ${scriptName}: Removing ${buildDir}"
         Remove-Item -recurse -force -Path ${buildDir} -ErrorAction Continue | Out-Null
     }
 
     if (!(Test-Path -Path ${buildDir}))
     {
-        "** ${scriptName}: Creating ${buildDir} subdirectory"
+        Write-Output "** ${scriptName}: Creating ${buildDir} subdirectory"
         New-Item -Path ${buildDir} -ItemType Directory | Out-Null
     }
     else
     {
-        "** ${scriptName}: ${buildDir} exists."
+        Write-Output "** ${scriptName}: ${buildDir} exists."
     }
 
     ## Need to regenerate?
@@ -308,10 +336,16 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     }
    
     ## Where we do the heaving lifting:
-    $generateArgs = @("-G", $genInfo.Generator, "-DCMAKE_BUILD_TYPE=${config}",
-        "-Wno-dev", "--no-warn-unused-cli"
-    )
-    $generateArgs = $generateArgs + $genInfo.ArchArgs
+    $generateArgs = @("-G", $genInfo.Generator)
+    if ($genInfo.SingleConfig) {
+        ## Single configuration set at compile time:
+        $generateArgs += @("-DCMAKE_BUILD_TYPE=${config}")
+    }
+    if ($genInfo.UCRT) {
+        ## Universal Windows Platform
+        $generateArgs += @("-DCMAKE_SYSTEM_NAME=WindowsStore", "-DCMAKE_SYSTEM_VERSION=$($genInfo.UCRTVersion)")
+    }
+    $generateArgs += $genInfo.ArchArgs + @("-Wno-dev", "--no-warn-unused-cli")
     if ($nonetwork)
     {
         $generateArgs += @("-DWITH_NETWORK:Bool=Off")
@@ -319,6 +353,10 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     if ($novideo)
     {
       $generateArgs += @("-DWITH_VIDEO:Bool=Off")
+    }
+    if ($lto)
+    {
+        $generateArgs += @("-DRELEASE_LTO:Bool=On")
     }
     $generateArgs += ${simhTopDir}
 
@@ -354,36 +392,36 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
 
     try
     {
-        "** ${scriptName}: Configuring and generating"
-        "** ${cmakeCmd} ${generateArgs}"
+        Write-Output "** ${scriptName}: Configuring and generating"
+        Write-Output "** ${cmakeCmd} ${generateArgs}"
 
         & ${cmakeCmd} ${generateArgs} 2>&1
         $lec = $LastExitCode
         if ($lec -gt 0) {
             "==== Last exit code ${lec}"
-            "** ${scriptName}: Configuration errors. Exiting."
+            Write-Output "** ${scriptName}: Configuration errors. Exiting."
             exit 1
         }
         if ($scriptPhases -contains "build")
         {
-            "** ${scriptName}: Building simulators."
+            Write-Output "** ${scriptName}: Building simulators."
             & ${cmakeCmd} ${buildArgs} -- ${buildSpecificArgs}
             $lec = $LastExitCode
             if ($lec -gt 0) {
                 "==== Last exit code ${lec}"
-                "** ${scriptName}: Build errors. Exiting."
+                Write-Output "** ${scriptName}: Build errors. Exiting."
                 exit 1
             }
         }
         else
         {
-            "** ${scriptName}: Generated build environment in $(Get-Location)"
+            Write-Output "** ${scriptName}: Generated build environment in $(Get-Location)"
             exit 0
         }
     }
     catch
     {
-        "** ${scriptName}: Caught error, exiting."
+        Write-Output "** ${scriptName}: Caught error, exiting."
         Format-List * -force -InputObject $_
         $exitval = 1
     }
@@ -428,11 +466,10 @@ if ($scriptPhases -contains "test")
             ## RHS of the cached variable's value.
             $depTopDir = $depTopDir.Line.Split('=')[1]
             $env:PATH =  "${depTopdir}\bin;${env:PATH}"
-            Write-Output "$testArgs"
-            Write-Output "$ctestCmd $testArgs"
+            Write-Output "** $ctestCmd $testArgs"
             & $ctestCmd $testArgs
             if ($LastExitCode -gt 0) {
-                "** ${scriptName}: Tests failed. Exiting."
+                Write-Output "** ${scriptName}: Tests failed. Exiting."
                 exit 1
             }
         }
@@ -440,7 +477,7 @@ if ($scriptPhases -contains "test")
     }
     catch
     {
-        "** ${scriptName}: Caught error, exiting."
+        Write-Output "** ${scriptName}: Caught error, exiting."
         Format-List * -force -InputObject $_
         $exitval = 1
     }
@@ -459,18 +496,18 @@ if ($scriptPhases -contains "install")
         $installPrefix = $installPrefix.Line.Split('=')[1]
         $installPath = $installPrefix
 
-        "** ${scriptName}: Install directory ${installPath}"
+        Write-Output "** ${scriptName}: Install directory ${installPath}"
         if (!(Test-Path -Path ${installPath}))
         {
-            "** ${scriptName}: Creating ${installPath}"
+            Write-Output "** ${scriptName}: Creating ${installPath}"
             New-Item -${installPath} -ItemType Directory -ErrorAction SilentlyContinue
         }
 
-        "** ${scriptName}: Installing simulators."
+        Write-Output "** ${scriptName}: Installing simulators."
         & ${cmakeCmd} --install ${buildDir} --config ${config}
         if ($LastExitCode -gt 0) {
             "==== Last exit code ${lec}"
-            "** ${scriptName}: Install errors. Exiting."
+            Write-Output "** ${scriptName}: Install errors. Exiting."
             exit 1
         }
     }
@@ -478,6 +515,33 @@ if ($scriptPhases -contains "install")
     {
         Pop-Location
         $env:PATH = $origPath
+    }
+}
+
+if ($scriptPhases -contains "package") {
+    $pkgDir = "${simhTopDir}\PACKAGES"
+    if (!(Test-Path -Path ${pkgDir}))
+    {
+        Write-Output "** ${scriptName}: Creating ${pkgDir} subdirectory"
+        New-Item -Path ${pkgDir} -ItemType Directory | Out-Null
+    }
+    else
+    {
+        Write-Output "** ${scriptName}: ${pkgDir} exists."
+    }
+
+    try {
+        Push-Location $buildDir
+
+        $cpackArgs = @("-G", "ZIP", "-C", "${config}")
+
+        Write-Output "** ${cpackCmd} ${cpackArgs}"
+        & $cpackCmd ${cpackArgs}
+        Move-Item -Force *.zip ${pkgDir}
+        Get-ChildItem ${pkgDir}
+    }
+    finally {
+        Pop-Location
     }
 }
 

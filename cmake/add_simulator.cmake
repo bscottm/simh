@@ -37,7 +37,8 @@ function(build_simcore _targ)
     # don't export out to the dependencies (hence PRIVATE.)
     set_target_properties(${_targ} PROPERTIES C_STANDARD 99)
     target_compile_definitions(${_targ} PRIVATE USE_SIM_CARD USE_SIM_IMD)
-    target_compile_options(${_targ} PUBLIC ${EXTRA_CFLAGS})
+    target_compile_options(${_targ} PRIVATE ${EXTRA_TARGET_CFLAGS})
+    target_link_options(${_targ} PRIVATE ${EXTRA_TARGET_LFLAGS})
 
     # Make sure that the top-level directory is part of the libary's include path:
     target_include_directories("${_targ}" PUBLIC "${CMAKE_SOURCE_DIR}")
@@ -148,7 +149,8 @@ function (simh_executable_template _targ)
 
     add_executable("${_targ}" "${SIMH_SOURCES}")
     set_target_properties(${_targ} PROPERTIES C_STANDARD 99)
-    target_compile_options(${_targ} PUBLIC ${EXTRA_CFLAGS})
+    target_compile_options(${_targ} PRIVATE ${EXTRA_TARGET_CFLAGS})
+    target_link_options(${_targ} PRIVATE ${EXTRA_TARGET_LFLAGS})
 
     if (MINGW)
         ## target_compile_options(${_targ} PUBLIC "-fms-extensions")

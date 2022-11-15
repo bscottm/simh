@@ -1,7 +1,7 @@
 #ifdef USE_DISPLAY
 /* pdp11_ng.c: NG, Knight vector display
 
-   Copyright (c) 2018, Lars Brinkhoff
+   Copyright (c) 2018, 2022, Lars Brinkhoff
 
    Permission is hereby granted, free of charge, to any person obtaining a
    copy of this software and associated documentation files (the "Software"),
@@ -58,7 +58,7 @@ DIB ng_dib = {
 };
 
 UNIT ng_unit = {
-  UDATA (&ng_svc, 0, 0), NG_DELAY
+  UDATA (&ng_svc, UNIT_IDLE, 0), NG_DELAY
 };
 
 REG ng_reg[] = {
@@ -133,8 +133,14 @@ t_stat
 ng_wr(int32 data, int32 PA, int32 access)
 {
   switch (PA & 002) {
-  case 000:  ng_set_csr(data); return SCPE_OK;
-  case 002:  ng_set_reloc(data); return SCPE_OK;
+  case 000:
+    ng_set_csr(data);
+    if (data & 010000)
+      sim_activate (&ng_unit, 1);
+    return SCPE_OK;
+  case 002:
+    ng_set_reloc(data);
+    return SCPE_OK;
   }
   return SCPE_NXM;
 }
@@ -185,7 +191,6 @@ ng_reset(DEVICE *dptr)
 
   CLR_INT (NG);
   ng_unit.wait = 100;
-  sim_activate (dptr->units, 1);
 
   set_cmd (0, "DZ DISABLED"); /* Conflict with NG. */
   set_cmd (0, "HK DISABLED"); /* Conflict with RF. */
@@ -232,11 +237,9 @@ ng_boot(int32 unit, DEVICE *dptr)
 t_stat
 ng_set_type(UNIT *uptr, int32 val, CONST char *cptr, void *desc)
 {
-  //if ((uptr->flags & DEV_DIS) == 0)
-  //return SCPE_ALATT;
-  if (MATCH_CMD (cptr, "DAZZLE"))
+  if (MATCH_CMD (cptr, "DAZZLE") == 0)
     ng_type = TYPE_DAZZLE;
-  else if (MATCH_CMD (cptr, "LOGO"))
+  else if (MATCH_CMD (cptr, "LOGO") == 0)
     ng_type = TYPE_LOGO;
   else
     return SCPE_ARG;

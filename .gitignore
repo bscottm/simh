@@ -37,6 +37,7 @@ _ReSharper*/
 *~
 *#
 BIN/
+PACKAGES/
 ipch/
 # Visual Studio, Visual Code directories:
 .vscode/

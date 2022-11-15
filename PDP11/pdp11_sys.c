@@ -122,7 +122,9 @@ extern DEVICE ch_dev;
 #ifdef USE_DISPLAY
 extern DEVICE ng_dev;
 extern DEVICE daz_dev;
+extern DEVICE tv_dev;
 #endif
+extern DEVICE mb_dev;
 extern REG cpu_reg[];
 extern int32 saved_PC;
 
@@ -206,7 +208,9 @@ DEVICE *sim_devices[] = {
 #ifdef USE_DISPLAY
     &ng_dev,
     &daz_dev,
+    &tv_dev,
 #endif
+    &mb_dev,
 #else
     &clk_dev,
     &tti_dev,

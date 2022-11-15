@@ -9,21 +9,30 @@ environment:
   CMAKE_DIST_DIR: C:/projects/simh/dist
 
   matrix:
+    ##+
+    ## The matrix is ordered by relative popularity/priority:
+    ##-
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu
+      SIMH_BUILD_FLAVOR: ninja
+
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
       SIMH_BUILD_FLAVOR: vs2022
-      VCPKG_ROOT: C:\tools\vcpkg
- 
+
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       SIMH_BUILD_FLAVOR: vs2019
-      VCPKG_ROOT: C:\tools\vcpkg
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       SIMH_BUILD_FLAVOR: vs2017
-      VCPKG_ROOT: C:\tools\vcpkg
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      SIMH_BUILD_FLAVOR: vs2019-xp
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      SIMH_BUILD_FLAVOR: vs2017-xp
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       SIMH_BUILD_FLAVOR: vs2015
-      ## (do the local SIMH install): VCPKG_ROOT: C:\tools\vcpkg
  
     - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
       SIMH_BUILD_FLAVOR: unix
@@ -31,21 +40,22 @@ environment:
     - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu1604
       SIMH_BUILD_FLAVOR: unix
  
-    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu
-      SIMH_BUILD_FLAVOR: unix
+    ## These images have cmake 3.12, which is too old. Could build if
+    ## cmake were upgraded in the image in the before_build stanza, but
+    ## that subverts the purpose of the image.
+
+    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+    #   SIMH_BUILD_FLAVOR: vs2013
+    #
+    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+    #   SIMH_BUILD_FLAVOR: vs2012
+    #
+    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+    #   SIMH_BUILD_FLAVOR: vs2008
     
-    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: vs2013
-    ## (too old for vcpkg) 
-    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: vs2012
-    ## (too old for vcpkg) 
-    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: vs2008
-    ## (too old for vcpkg) 
-    ## (too old for vcpkg)     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
-    ## (too old for vcpkg)       SIMH_BUILD_FLAVOR: mingw
-    ## (too old for vcpkg)       MINGW: C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0
+    ## - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+    ##   SIMH_BUILD_FLAVOR: mingw
+    ##   MINGW: C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0
 
     ## Here's how you would build with Ninja. It's going to build the same executables
     ## as the MinGW flavor, which is why it's skipped here.
@@ -88,19 +98,41 @@ before_build:
         }
       }
   - sh: |
-      sudo apt-get -y update
-      sudo apt-get install -ym pkg-config libsdl2-dev libsdl2-ttf-dev libpcap-dev libvdeplug-dev
-      sudo apt-get install -ym libedit-dev
+      case "${APPVEYOR_BUILD_WORKER_IMAGE}" in
+      Ubuntu*)
+        ## .travis/deps.sh will try to install cmake, but that's not desirable
+        sudo apt-get update -yqqm
+        sudo apt-get install -ym pkg-config
+        sudo apt-get install -ym libegl1-mesa-dev libgles2-mesa-dev
+        sudo apt-get install -ym libsdl2-dev libpcap-dev libvdeplug-dev
+        sudo apt-get install -ym libsdl2-ttf-dev
+        sudo apt-get install -ym libedit-dev
+        ;;
+      *)
+        echo "Update before_build for ${APPVEYOR_BUILD_WORKER_IMAGE}"
+        exit 99
+      esac
 
 build_script:
   # Run the cmake-builder script all the way through: generate, build, test, install.
   - ps: |
       if ($isWindows) {
-        if (!([String]::IsNullOrEmpty($env:MINGW))) { $env:PATH=$(@(${env:MINGW}, ${env:PATH}) -join ";"); };
-        cmake\cmake-builder.ps1 -clean -notest -noinstall -config ${env:CONFIGURATION} -flavor ${env:SIMH_BUILD_FLAVOR}
+        if (!([string]::IsNullOrEmpty($env:MINGW))) { $env:PATH=$(@(${env:MINGW}, ${env:PATH}) -join ";"); };
+        cmake\cmake-builder.ps1 -flavor ${env:SIMH_BUILD_FLAVOR} -config ${env:CONFIGURATION} `
+            -lto -parallel -clean -notest -noinstall -verbose
       }
   - sh: |
-      cmake/cmake-builder.sh --flavor ${SIMH_BUILD_FLAVOR} --config ${CONFIGURATION} --clean --notest --noinstall
+      case "${APPVEYOR_BUILD_WORKER_IMAGE}" in
+      Ubuntu1604)
+        ## LTO support is either incompletely installed or not installed at all.
+        LTO=
+        ;;
+      *)
+        LTO="--lto"
+        ;;
+      esac
+      cmake/cmake-builder.sh --flavor ${SIMH_BUILD_FLAVOR} --config ${CONFIGURATION} ${LTO} \
+          --verbose --parallel --clean --notest --noinstall
 
 test_script:
   - ps: |
@@ -110,6 +142,17 @@ test_script:
       }
   - sh: |
       cmake/cmake-builder.sh --testonly --config ${CONFIGURATION} --flavor ${SIMH_BUILD_FLAVOR}
+
+after_test:
+  - ps: |
+      if ($isWindows) {
+        cmake\cmake-builder.ps1 -package -config ${env:CONFIGURATION} -flavor ${env:SIMH_BUILD_FLAVOR}
+      }
+  - sh: |
+      cmake/cmake-builder.sh --package --config ${CONFIGURATION} --flavor ${SIMH_BUILD_FLAVOR}
+
+artifacts:
+  - path: PACKAGES\*.zip
 
 # notifications:
 #   - provider: Email

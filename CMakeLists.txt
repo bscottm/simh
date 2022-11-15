@@ -22,7 +22,7 @@ include(vcpkg-setup)
 cmake_minimum_required(VERSION 3.14)
 
 ## Respect MSVC_RUNTIME_LIBRARY's setting. Has to be set before project(),
-## otherwise it'd have been put into platform_quirks.
+## otherwise it'd have been put into platform-quirks.
 ##
 ## Note: See cmake\build_dep_matrix.cmake to see how this is propagated down
 ## into the dependency libraries.
@@ -32,13 +32,6 @@ if (POLICY CMP0091)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set(MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
-
-## SDL2 on Ubuntu 16 has trailing spaces in the link libraries. Temporarily
-## turn on the OLD policy which silently strips the spaces. Need to re-evaluate
-## this because the OLD policy will disappear at some point.
-## if (POLICY CMP0004)
-## cmake_policy(SET CMP0004 OLD)
-## endif()
 
 set(SIMH_VERSION "4.0.0")
 project(simh VERSION "${SIMH_VERSION}" LANGUAGES C CXX)
@@ -54,9 +47,6 @@ if (NOT CMAKE_CONFIGURATION_TYPES)
         message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
     endif (NOT CMAKE_BUILD_TYPE)
 endif ()
-
-## Deal with platform quirkiness
-include(platform_quirks)
 
 # SIMH_SYSTEM_ID: Roughly analogous to the autoconf system triple. Used (almost exclusively)
 # as part of the depedencies' top-level directory name. 
@@ -77,6 +67,10 @@ if (NOT version_minor)
 endif (NOT version_minor)
 string(APPEND SIMH_SYSTEM_ID "-${version_major}.${version_minor}")
 
+
+if (CMAKE_GENERATOR MATCHES "Visual Studio .*" AND CMAKE_GENERATOR_TOOLSET MATCHES "v[0-9][0-9][0-9]_xp")
+    string(APPEND SIMH_SYSTEM_ID "-XP")
+endif ()
 
 option(BUILD_SHARED_DEPS
        "Enable (=1)/disable (=0) building dependencies as shared libraries/DLLs (def: disabled)"
@@ -120,6 +114,12 @@ option(ENABLE_CPPCHECK
 option(WINAPI_DEPRECATION
        "Show (=1)/mute (=0) Various WinAPI deprecation warning (def: mute.)"
        FALSE)
+option(WARNINGS_FATAL
+       "Compile-time warnings are errors (e.g., \"-Werror\" on GCC)"
+       FALSE)
+option(RELEASE_LTO
+       "Use Link Time Optimization (LTO) in Release builds."
+       FALSE)
 
 ## Additional command line arguments for dependencies. Need this because Powershell will report
 ## an error if anything is sent to stderr and $ErrorDefaultAction is set to "Stop".
@@ -135,45 +135,6 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   endif ()
 endif()
 
-set(EXTRA_CFLAGS "")
-
-# Tweak compiler flags
-if (MSVC)
-    list(APPEND EXTRA_CFLAGS "$<$<CONFIG:Debug>:/W3>" "$<$<CONFIG:Debug>:/w34744>" "$<$<CONFIG:Debug>:/w34777>")
-    # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /verbose:lib")
-elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID MATCHES ".*Clang")
-    # include(fpintrin)
-
-    # Turn on warnings about strict overflow/potential overflows.
-    ## LIST(APPEND EXTRA_CFLAGS "-Wall" "-fno-inline" "-fstrict-overflow" "-Wstrict-overflow=3")
-    LIST(APPEND EXTRA_CFLAGS "-Wformat" "-U__STRICT_ANSI__")
-
-    # 'O3' optimization and strict overflow cause all kinds of simulator issues, especially inside
-    # the VAX simulators. Reduce optimization and ensure strict overflow is turned off.
-    message(STATUS "Replacing '-O3' with '-O2'")
-    string(REGEX REPLACE "-O3" "-O2" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-    string(REGEX REPLACE "-O3" "-O2" CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
-
-    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-        message(STATUS "Adding GNU-specific optimizations to CMAKE_C_FLAGS_RELEASE")
-        list(APPEND opt_flags "-finline-functions" "-fgcse-after-reload" "-fpredictive-commoning"
-                              "-fipa-cp-clone" "-fno-unsafe-loop-optimizations" "-fno-strict-overflow")
-    elseif (CMAKE_C_COMPILER_ID MATCHES ".*Clang")
-        message(STATUS "Adding Clang-specific optimizations to CMAKE_C_FLAGS_RELEASE")
-        list(APPEND opt_flags "-fno-strict-overflow")
-    endif()
-
-    foreach (opt_flag ${opt_flags})
-        message(STATUS "    ${opt_flag}")
-        string(REGEX REPLACE "${opt_flag}[ \t\r\n]*" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-        string(APPEND CMAKE_C_FLAGS_RELEASE " ${opt_flag}")
-        string(REGEX REPLACE "${opt_flag}[ \t\r\n]*" "" CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
-        string(APPEND CMAKE_C_FLAGS_MINSIZEREL " ${opt_flag}")
-    endforeach ()
-else ()
-    message(STATUS "Not touching CMAKE_C_FLAGS_RELEASE on ${CMAKE_C_COMPILER_ID}")
-endif (MSVC)
-
 ## CMake policy tweaks
 
 if (POLICY CMP0135)
@@ -182,11 +143,13 @@ if (POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-
 # Places where CMake should look for dependent package configuration fragments and artifacts:
 list(APPEND CMAKE_INCLUDE_PATH ${CMAKE_BINARY_DIR}/include)
 ## list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 
+## Deal with platform quirkiness
+include(CheckCCompilerFlag)
+include(platform-quirks)
 
 # Find packages, arrange for dependency download/compile/install:
 #
@@ -366,4 +329,58 @@ include(simh-simulators)
 
 # After we know where everything will install, let CPack figure out
 # how to assemble it into a package file.
+set(CPACK_PACKAGE_VENDOR "The Open-SIMH project")
+
+## Do the "special" CPack thing for system names
+set(systemSuffix ${CMAKE_SYSTEM_NAME})
+
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(systemSuffix "win64")
+    else ()
+        set(systemSuffix "win32")
+    endif ()
+endif ()
+string(JOIN "-" CPACK_PACKAGE_FILE_NAME
+    "${CMAKE_PROJECT_NAME}"
+    "${CMAKE_PROJECT_VERSION}"
+    "${systemSuffix}"
+)
+
+set(buildSuffix "")
+
+## Distinguish between release and debug build artifacts where we can:
+if (DEFINED CMAKE_BUILD_TYPE)
+    if (CMAKE_BUILD_TYPE EQUAL "Debug")
+        set(buildSuffix "debug")
+    endif ()
+else ()
+    set(buildSuffix "\${CPACK_BUILD_CONFIG}")
+endif ()
+if (buildSuffix)
+    string(APPEND CPACK_PACKAGE_FILE_NAME "-${buildSuffix}")
+endif ()
+
+## If using Visual Studio, append the compiler and toolkit:
+set(buildSuffix "")
+if (MSVC_VERSION)
+    if (MSVC_VERSION EQUAL 1900)
+        set(buildSuffix "vs2015")
+    elseif (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS_EQUAL 1919)
+        set(buildSuffix "vs2017")
+    elseif (MSVC_VERSION GREATER_EQUAL 1920 AND MSVC_VERSION LESS_EQUAL 1929)
+        set(buildSuffix "vs2019")
+    elseif (MSVC_VERSION GREATER_EQUAL 1930 AND MSVC_VERSION LESS_EQUAL 1939)
+        set(buildSuffix "vs2022")
+    endif ()
+    if (CMAKE_GENERATOR_TOOLSET MATCHES "v[0-9][0-9][0-9]_xp")
+        string(APPEND buildSuffix "-xp")
+    endif ()
+endif()
+if (buildSuffix)
+    string(APPEND CPACK_PACKAGE_FILE_NAME "-${buildSuffix}")
+endif ()
+unset(buildSuffix)
+message(STATUS "CPack output file name: ${CPACK_PACKAGE_FILE_NAME}")
+
 include(CPack)

@@ -3,7 +3,7 @@
 ## Not entirely sure that they will make a huge difference to code
 ## generation in the simulators.
 
-set(EXTRA_CFLAGS)
+set(EXTRA_TARGET_CFLAGS)
 
 set(CMAKE_REQUIRED_FLAGS "-msse")
 check_c_source_compiles("
@@ -22,7 +22,7 @@ check_c_source_compiles("
     #endif
     int main(int argc, char **argv) { }" HAVE_SSE)
 if(HAVE_SSE)
-  list(APPEND EXTRA_CFLAGS "-msse")
+  list(APPEND EXTRA_TARGET_CFLAGS "-msse")
 endif()
 set(CMAKE_REQUIRED_FLAGS ${ORIG_CMAKE_REQUIRED_FLAGS})
 
@@ -43,7 +43,7 @@ check_c_source_compiles("
     #endif
     int main(int argc, char **argv) { }" HAVE_SSE2)
 if(HAVE_SSE2)
-  list(APPEND EXTRA_CFLAGS "-msse2")
+  list(APPEND EXTRA_TARGET_CFLAGS "-msse2")
 endif()
 set(CMAKE_REQUIRED_FLAGS ${ORIG_CMAKE_REQUIRED_FLAGS})
 
@@ -64,7 +64,7 @@ check_c_source_compiles("
     #endif
     int main(int argc, char **argv) { }" HAVE_SSE3)
 if(HAVE_SSE3)
-  list(APPEND EXTRA_CFLAGS "-msse3")
+  list(APPEND EXTRA_TARGET_CFLAGS "-msse3")
 endif()
 set(CMAKE_REQUIRED_FLAGS ${ORIG_CMAKE_REQUIRED_FLAGS})
 
@@ -72,7 +72,7 @@ if(SSE OR SSE2 OR SSE3)
   if(USE_GCC)
     check_c_compiler_flag(-mfpmath=387 HAVE_FP_387)
     if(HAVE_FP_387)
-      list(APPEND EXTRA_CFLAGS "-mfpmath=387")
+      list(APPEND EXTRA_TARGET_CFLAGS "-mfpmath=387")
     endif()
   endif()
   set(HAVE_SSEMATH TRUE)

@@ -34,6 +34,7 @@ Options:
 --config (-c)     Specifies the build configuration: 'Release' or 'Debug'
 
 --target          Build a specific simulator (e.g., pdp11, vax, ...)
+--lto             Enable Link Time Optimization (LTO) in Release builds
 
 --verbose         Turn on verbose build output
 
@@ -61,6 +62,7 @@ noinstall=
 installOnly=
 verboseMode=
 buildTarget=
+packaging=
 
 ## CMake supports "-S" flag (implies -B works as well.) Otherwise, it's
 ## the older invocation command line.
@@ -141,7 +143,7 @@ if [[ "x${MSYSTEM}" != x ]]; then
 fi
 
 longopts=clean,help,flavor:,config:,nonetwork,novideo,notest,parallel,generate,testonly,regenerate
-longopts=${longopts},noinstall,installonly,verbose,target:
+longopts=${longopts},noinstall,installonly,verbose,target:,package,lto
 
 ARGS=$(${getopt_prog} --longoptions $longopts --options xhf:cpg -- "$@")
 if [ $? -ne 0 ] ; then
@@ -206,6 +208,10 @@ while true; do
             noinstall=yes
             shift
             ;;
+        --lto)
+            generateArgs="${generateArgs} -DRELEASE_LTO:Bool=On"
+            shift
+            ;;
         -p | --parallel)
             buildParallel=yes
             shift
@@ -235,6 +241,10 @@ while true; do
             noinstall=yes
             buildTarget="$2"
             shift 2
+            ;;
+        --package)
+            packaging=yes
+            shift
             ;;
         --)
             ## End of options. we'll ignore.
@@ -268,6 +278,18 @@ if [[ ! -d ${buildSubdir} ]]; then
     mkdir ${buildSubdir}
 fi
 
+if [[ "x${packaging}" != x ]]; then
+    cpack=$(which cpack) || {
+        echo "${scriptName}: Could not find 'cpack'. Please check your 'cmake' installation."
+        exit 1
+    }
+
+    if [[ ! -d ${simhTopDir}/PACKAGES ]]; then
+        mkdir ${simhTopDir}/PACKAGES
+        echo "${scriptName}: Packaging directory:     ${simhTopDir}/PACKAGES"
+    fi
+fi
+
 ## Setup test arguments (and add parallel later)
 testArgs="-C ${buildConfig} --timeout 180 --output-on-failure"
 
@@ -299,12 +321,14 @@ elif [[ x$testOnly = xyes ]]; then
     phases=test
 elif [[ x$installOnly = xyes ]]; then
     phases=install
+elif [[ x$packaging = xyes ]]; then
+    phases=package
 else
     phases="generate build"
     if [[ x${notest} != xyes ]]; then
         phases="${phases} test"
     fi
-    if [[ x"${buildTarget}" == x ]]; then
+    if [[ x"${noinstall}" == x ]]; then
         phases="${phases} install"
     fi
 fi
@@ -347,6 +371,12 @@ for ph in ${phases}; do
         ;;
     install)
         ${cmake} --build "${buildSubdir}" --target install
+        ;;
+    package)
+        (cd "${buildSubdir}" \
+            && ${cpack} -G ZIP -C ${buildConfig} ${verboseMode} \
+            && mv *.zip ${simhTopDir}/PACKAGES \
+        )
         ;;
     esac
 done

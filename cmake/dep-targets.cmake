@@ -10,15 +10,19 @@ set(LIBPCAP_ARCHIVE_TYPE "tar.gz")
 set(LIBPCAP_TAR_ARCHIVE "${LIBPCAP_ARCHIVE_NAME}-${LIBPCAP_RELEASE}.${LIBPCAP_ARCHIVE_TYPE}")
 set(LIBPCAP_SOURCE_URL  "https://github.com/the-tcpdump-group/libpcap/archive/refs/tags/${LIBPCAP_TAR_ARCHIVE}")
 
+                                                                                  
 function(fix_interface_libs _targ)
-    set(fixed_libs)
-    get_property(orig_libs TARGET ${_targ} PROPERTY INTERFACE_LINK_LIBRARIES)
-    foreach(each_lib IN LISTS ${_lib})
-        string(STRIP ${each_lib} stripped_lib)
-        list(APPEND fixed_libs ${stripped_lib})
-        message("** \"${each_lib}\" -> \"${stripped_lib}\"")
-    endforeach ()
-    set_property(TARGET ${_targ} PROPERTY INTERFACE_LINK_LIBRARIES ${fixed_libs})
+    get_target_property(_aliased ${_targ} ALIASED_TARGET)
+    if(NOT _aliased)
+        set(fixed_libs)
+        get_property(orig_libs TARGET ${_targ} PROPERTY INTERFACE_LINK_LIBRARIES)
+        foreach(each_lib IN LISTS ${_lib})
+            string(STRIP ${each_lib} stripped_lib)
+            list(APPEND fixed_libs ${stripped_lib})
+            message("** \"${each_lib}\" -> \"${stripped_lib}\"")
+        endforeach ()
+        set_property(TARGET ${_targ} PROPERTY INTERFACE_LINK_LIBRARIES ${fixed_libs})
+    endif ()
 endfunction ()
 
 ## Ubuntu 16.04 -- when we find the SDL2 library, there are trailing spaces. Strip
@@ -195,21 +199,6 @@ IF (WITH_VIDEO)
 
         target_compile_definitions(simh_video INTERFACE ${PNG_DEFINITIONS} HAVE_LIBPNG)
     ENDIF (PNG_FOUND)
-
-    ## Freetype will sometimes find BZip2 in AppVeyor's image, which means that we
-    ## need to bring it along as a dependency for AppVeyor builds. Ordinarily, though,
-    ## it's not a dependency for SIMH.
-
-#    if (BZIP2_FOUND)
-#        if (TARGET BZip2::BZip2)
-#            target_link_libraries(simh_video INTERFACE BZip2::BZip2)
-#        elseif (TARGET PkgConfig::BZip2)
-#            target_link_libraries(simh_video INTERFACE BZip2::BZip2)
-#        else ()
-#            target_include_directories(simh_video INTERFACE ${BZIP2_INCLUDE_DIR})
-#            target_link_libraries(simh_video INTERFACE ${BZIP2_LIBRARIES})
-#        endif ()
-#    endif (BZIP2_FOUND)
 
     set(BUILD_WITH_VIDEO TRUE)
 ELSE ()

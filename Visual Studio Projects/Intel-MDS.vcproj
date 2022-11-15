@@ -47,6 +47,7 @@
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
+				WarnAsError="true"
 				DebugInformationFormat="3"
 				CompileAs="1"
 				ShowIncludes="false"
@@ -94,6 +95,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="Running Available Tests"
+				CommandLine="Post-Build-Event.cmd Intel-Systems &quot;$(TargetDir)$(TargetName).exe&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -133,6 +136,7 @@
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
+				WarnAsError="true"
 				DebugInformationFormat="3"
 				CompileAs="1"
 			/>
@@ -182,6 +186,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="Running Available Tests"
+				CommandLine="Post-Build-Event.cmd Intel-Systems &quot;$(TargetDir)$(TargetName).exe&quot;"
 			/>
 		</Configuration>
 	</Configurations>

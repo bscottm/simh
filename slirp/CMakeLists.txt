@@ -47,6 +47,8 @@ if (WITH_NETWORK)
           "${CMAKE_SOURCE_DIR}/slirp_glue"
           $<$<BOOL:${WIN32}>:${CMAKE_SOURCE_DIR}/slirp_glue/qemu/win32/include>)
 
+  target_compile_options(slirp PRIVATE ${EXTRA_TARGET_CFLAGS})
+  target_link_options(slirp PRIVATE ${EXTRA_TARGET_LFLAGS})
   target_link_libraries(slirp PUBLIC $<$<BOOL:${WIN32}>:Iphlpapi>)
 else (WITH_NETWORK)
   # Otherwise, just make slirp an empty interface library.

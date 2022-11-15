@@ -541,7 +541,7 @@ void disk_format (UNIT *u)
     log_data(fmtbuf, 5);
 
     /* Печатаем идентификатор, адрес и контрольную сумму адреса. */
-    if (u->dptr->dctrl & DEB_TRC)
+    if (u->dptr->dctrl & DEB_TRC) {
         if (IS_29MB(u))
             besm6_debug ("::: формат МД %02o зона %04o память %05o skip %02o и-а-кса %010o %010o",
                          c->dev, c->zone, c->memory, ptr - memory -c ->memory,
@@ -552,6 +552,7 @@ void disk_format (UNIT *u)
                          c->dev, c->zone, c->track, c->memory, (uint32) (ptr - memory -c ->memory),
                          (int) (fmtbuf[0] >> 8 & BITS(30)),
                          (int) (fmtbuf[2] >> 14 & BITS(30)));
+    }
 }
 
 /*
@@ -716,7 +717,7 @@ void disk_ctl (int ctlr, uint32 cmd)
     KMD *c = &controller [ctlr];
     UNIT *u = c->dev < 0 ? &md_unit[0] : &md_unit [c->dev];
 
-    if ((md_dev[ctlr].dctrl & DEB_OPS || c->dev != -1 && u->dptr->dctrl & DEB_OPS) && cmd & BBIT(13)) {
+    if ((md_dev[ctlr].dctrl & DEB_OPS || (c->dev != -1 && u->dptr->dctrl & DEB_OPS)) && cmd & BBIT(13)) {
         besm6_debug ("::: КМД %c: bit 13 + %04o",
                      ctlr + '3', cmd & 07777);
     }
