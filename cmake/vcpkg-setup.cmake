@@ -47,8 +47,10 @@ if (WIN32 AND CMAKE_GENERATOR MATCHES "Visual Studio .*")
 #    elseif (CMAKE_GENERATOR MATCHES "Visual Studio 14 .*")
 #        ## VS 2015
 #    endif()
-#    ## And our local triplets configurations:
-#    set(ENV{VCPKG_OVERLAY_TRIPLETS} ${CMAKE_SOURCE_DIR}/cmake/local-triplets)
+
+    ## And our local triplets configurations:
+    set(ENV{VCPKG_OVERLAY_TRIPLETS} ${CMAKE_SOURCE_DIR}/cmake/local-triplets)
+    set(VCPKG_RUNTIME vs2022xp)
 
     ## Set the default triplet in the environment; older vcpkg installs on
     ## appveyor don't support the "--triplet" command line argument.
@@ -66,7 +68,7 @@ if (WIN32 AND CMAKE_GENERATOR MATCHES "Visual Studio .*")
     ## Not locally installed or user did not set VCPKG_ROOT -- install a SIMH-local copy
     ## and work with it.
     if (NOT VCPKG_LOCAL OR NOT DEFINED ENV{VCPKG_ROOT})
-        set(VCPKG_URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.09.27.zip")
+        set(VCPKG_URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.11.14.zip")
         string(REGEX MATCH "/tags/(.*)\.zip" vcpkg_version ${VCPKG_URL})
         set(vcpkg_version ${CMAKE_MATCH_1})
         set(VCPKG_DIR "${CMAKE_BINARY_DIR}/vcpkg-${vcpkg_version}")

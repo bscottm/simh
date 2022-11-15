@@ -23,7 +23,7 @@ if (WITH_ASYNC)
         set(THREADING_PKG_STATUS "Platform-detected threading support")
     endif (MSVC)
 
-    if (THREADS_FOUND OR PThreads4W_FOUND)
+    if (THREADS_FOUND OR PThreads4W_FOUND OR PTHREADS4W_FOUND)
         message(STATUS "Reader thread and SIM_ASYNC_IO enabled.")
         target_compile_definitions(thread_lib INTERFACE USE_READER_THREAD SIM_ASYNCH_IO)
     else ()
