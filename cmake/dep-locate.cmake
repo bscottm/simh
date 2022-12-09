@@ -13,7 +13,7 @@ if (WITH_REGEX)
 endif ()
 
 if (WITH_REGEX OR WITH_VIDEO)
-    ## set(ZLIB_USE_STATIC_LIBS ON)
+    set(ZLIB_USE_STATIC_LIBS ON)
     find_package(ZLIB)
 endif ()
 

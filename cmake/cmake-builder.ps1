@@ -230,10 +230,9 @@ function Get-GeneratorInfo([string]$flavor)
     return $cmakeGenMap[$flavor]
 }
 
-
 function Quote-Args([string[]]$arglist)
 {
-    return (${arglist} | foreach-object { if ($_ -like "* *") { "`"$_`"" } else { $_ } })
+    return ($arglist | foreach-object { if ($_ -like "* *") { "`"$_`"" } else { $_ } })
 }
 
 
@@ -468,9 +467,8 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     {
         $generateArgs += @("-DDEBUG_WALL:Bool=On")
     }
-    $generateArgs += ${simhTopDir}
 
-    $buildArgs     =  @("--build", ".", "--config", "${config}")
+    $buildArgs     =  @("--build", "${buildDir}", "--config", "${config}")
     if ($parallel)
     {
       $buildArgs += "--parallel"
@@ -499,14 +497,9 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
 $exitval = 0
 
 foreach ($phase in $scriptPhases) {
-    $processArgs = @{
-      Wait = $true
-      NoNewWindow = $true
-      PassThru = $true
-      WorkingDirectory = ${buildDir}
-    }
-
     $savedPATH = $env:PATH
+    $argList = @()
+    $phaseCommand = "Write-Output"
 
     switch -exact ($phase)
     {
@@ -516,25 +509,15 @@ foreach ($phase in $scriptPhases) {
 
             Write-Host "** ${scriptName}: Configuring and generating"
 
-            $genArgs = $(Quote-Args $generateArgs) -join " "
-            Write-Host "** ${cmakeCmd} ${genArgs}"
-
-            $processArgs += @{
-              FilePath = ${cmakeCmd}
-              ArgumentList = ${genArgs}
-            }
+            $phaseCommand = ${cmakeCmd}
+            $argList = Quote-Args $generateArgs
         }
 
         "build" {
             Write-Host "** ${scriptName}: Building simulators."
 
-            $buildArgs = $(Quote-Args $buildArgs) -join " "
-            $buildSpecificArgs = $(Quote-Args $buildSpecificArgs) -join " "
-
-            $processArgs += @{
-              FilePath = ${cmakeCmd}
-              ArgumentList = ${buildArgs} + " -- " + ${buildSpecificArgs}
-            }
+            $phaseCommand = ${cmakeCmd}
+            $argList = $(Quote-Args $buildArgs) + $(Quote-Args $buildSpecificArgs)
         }
 
         "test" {
@@ -559,12 +542,8 @@ foreach ($phase in $scriptPhases) {
                 $testArgs += @("-R", "simh-${target}")
             }
          
-            $testArgs = $(Quote-Args $testArgs) -join " "
-
-            $processArgs += @{
-              FilePath = ${ctestCmd}
-              ArgumentList = ${testArgs}
-            }
+            $phaseCommand = ${ctestCmd}
+            $argList = Quote-Args $testArgs
 
             $env:PATH = $modPath
 
@@ -590,10 +569,8 @@ foreach ($phase in $scriptPhases) {
                 New-Item -${installPath} -ItemType Directory -ErrorAction SilentlyContinue
             }
 
-            $processArgs += @{
-              FilePath = ${cmakeCmd}
-              ArgumentList = @( "--install", "`"${buildDir}`"", "--config", "`"${config}`"") -join " "
-            }
+            $phaseCommand = ${cmakeCmd}
+            $argList = Quote-Args @( "--install", "${buildDir}", "--config", "${config}")
         }
 
         "package" {
@@ -611,52 +588,27 @@ foreach ($phase in $scriptPhases) {
             }
 
 
-            $processArgs += @{
-              FilePath = ${cpackCmd}
-              ArgumentList = @( "-G", "ZIP", "-C", "`"${config}`"") -join " "
-            }
+            $phaseCommand = ${cpackCmd}
+            $argList = Quote-Args @( "-G", "ZIP", "-C", "${config}")
         }
     }
 
-    $status = Start-Process @processArgs
-
-    # All this just so that we see the output in appveyor's logs...
-    # Juice is not worth the squeeze. We give up being able to see
-    # line-by-line log output. Windows Powershell is not set up to
-    # run threads to drain stdout and stderr from the underlying
-    # process similtaneously. It's (apparently) a NT 4 architecture
-    # holdover.
-
-    # $psi = New-object System.Diagnostics.ProcessStartInfo 
-    # $psi.CreateNoWindow = $true 
-    # $psi.UseShellExecute = $false 
-    # $psi.RedirectStandardOutput = $true 
-    # $psi.RedirectStandardError = $true 
-    # $psi.WorkingDirectory = $processArgs.WorkingDirectory
-    # $psi.FileName = $processArgs.FilePath
-    # $psi.Arguments = $processArgs.ArgumentList
-
-    # $process = New-Object System.Diagnostics.Process 
-    # $process.StartInfo = $psi 
-
-    # [void]$process.Start()
-
-    # $output = $process.StandardOutput.ReadToEnd()
-    # $stderr = $process.StandardError.ReadToEnd()
-
-    # $process.WaitForExit() 
-
-    # Write-Host $output
-    # if ($stderr.Length -gt 0) {
-    #     Write-Host "---- stderr ---"
-    #     Write-Host "$stderr"
-    #     Write-Host "---------------"
-    # }
-
-    if ($status.ExitCode -gt 0) {
-        $printPhase = (Get-Culture).TextInfo.ToTitleCase($phase)
-        Write-Error $( "${printPhase} phase exited with non-zero status: " + $status.ExitCode)
-        exit 1
+    try {
+        Push-Location ${buildDir}
+        Write-Host "** ${phaseCommand} ${argList}"
+        & $phaseCommand @arglist
+        if ($LastExitCode -gt 0) {
+            $printPhase = (Get-Culture).TextInfo.ToTitleCase($phase)
+            Write-Error $("${printPhase} phase exited with non-zero status: " + $LastExitCode)
+            exit 1
+        }
+    }
+    catch {
+        Write-Host "Error running '$($psi.FileName) $($psi.Arguments)' command: $($_.Exception.Message)" -ForegroundColor Red
+        throw $_
+    }
+    finally {
+        Pop-Location
     }
 
     $env:PATH = $savedPATH
