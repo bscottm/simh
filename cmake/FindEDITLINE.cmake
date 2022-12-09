@@ -52,9 +52,9 @@ function(editline_debug _VARNAME)
             message("${EDITLINE_PUBLIC_VAR_NS}_${_VARNAME} = ${${EDITLINE_PUBLIC_VAR_NS}_${_VARNAME}}")
         else(DEFINED ${EDITLINE_PUBLIC_VAR_NS}_${_VARNAME})
             message("${EDITLINE_PUBLIC_VAR_NS}_${_VARNAME} = <UNDEFINED>")
-        endif(DEFINED ${EDITLINE_PUBLIC_VAR_NS}_${_VARNAME})
-    endif(${EDITLINE_PUBLIC_VAR_NS}_DEBUG)
-endfunction(editline_debug)
+        endif()
+    endif()
+endfunction()
 
 # Alias all EditLine_FIND_X variables to EDITLINE_FIND_X
 # Workaround for find_package: no way to force case of variable's names it creates (I don't want to change MY coding standard)
@@ -67,8 +67,8 @@ foreach(${EDITLINE_PRIVATE_VAR_NS}_VARNAME ${${EDITLINE_PRIVATE_VAR_NS}_CURRENT_
     if(${EDITLINE_PRIVATE_VAR_NS}_VARNAME MATCHES "^${${EDITLINE_PRIVATE_VAR_NS}_FIND_PKG_PREFIX}")
         string(REGEX REPLACE "^${${EDITLINE_PRIVATE_VAR_NS}_FIND_PKG_PREFIX}" "${EDITLINE_PUBLIC_VAR_NS}" ${EDITLINE_PRIVATE_VAR_NS}_NORMALIZED_VARNAME ${${EDITLINE_PRIVATE_VAR_NS}_VARNAME})
         set(${${EDITLINE_PRIVATE_VAR_NS}_NORMALIZED_VARNAME} ${${${EDITLINE_PRIVATE_VAR_NS}_VARNAME}})
-    endif(${EDITLINE_PRIVATE_VAR_NS}_VARNAME MATCHES "^${${EDITLINE_PRIVATE_VAR_NS}_FIND_PKG_PREFIX}")
-endforeach(${EDITLINE_PRIVATE_VAR_NS}_VARNAME)
+    endif()
+endforeach()
 
 ########## Public ##########
 find_path(
@@ -102,15 +102,15 @@ if(${EDITLINE_PUBLIC_VAR_NS}_INCLUDE_DIRS)
         )
     else(${EDITLINE_PUBLIC_VAR_NS}_FIND_REQUIRED AND NOT ${EDITLINE_PUBLIC_VAR_NS}_FIND_QUIETLY)
         find_package_handle_standard_args(${EDITLINE_PUBLIC_VAR_NS} "editline not found" ${EDITLINE_PUBLIC_VAR_NS}_LIBRARIES ${EDITLINE_PUBLIC_VAR_NS}_INCLUDE_DIRS)
-    endif(${EDITLINE_PUBLIC_VAR_NS}_FIND_REQUIRED AND NOT ${EDITLINE_PUBLIC_VAR_NS}_FIND_QUIETLY)
+    endif()
 
-else(${EDITLINE_PUBLIC_VAR_NS}_INCLUDE_DIRS)
+else()
 
     if(${EDITLINE_PUBLIC_VAR_NS}_FIND_REQUIRED AND NOT ${EDITLINE_PUBLIC_VAR_NS}_FIND_QUIETLY)
         message(FATAL_ERROR "Could not find editline include directory")
     endif(${EDITLINE_PUBLIC_VAR_NS}_FIND_REQUIRED AND NOT ${EDITLINE_PUBLIC_VAR_NS}_FIND_QUIETLY)
 
-endif(${EDITLINE_PUBLIC_VAR_NS}_INCLUDE_DIRS)
+endif()
 
 mark_as_advanced(
     ${EDITLINE_PUBLIC_VAR_NS}_INCLUDE_DIRS

@@ -8,11 +8,11 @@ defaults:
 
 jobs:
   cmake-unix:
-    name: CMake Ubuntu and MacOSX builds
+    name: CMake Ubuntu
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-12]
+        os: [ubuntu-20.04, ubuntu-22.04]
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
@@ -24,10 +24,33 @@ jobs:
       - name: cmake-builder.sh
         run: |
           cmake/cmake-builder.sh --config Release --flavor unix --lto --notest --noinstall --parallel --verbose
+      - name: SIMH simulator suite test
+        run: |
+          cmake/cmake-builder.sh --config Release --flavor unix --testonly
+
+  cmake-macosx:
+    name: CMake Mac OSX
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-12]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        if: ${{runner.os == 'macOS'}}
+        run: sh -ex .travis/deps.sh osx
+      - name: Install dependencies
+        if: ${{runner.os == 'Linux'}}
+        run: sh -ex .travis/deps.sh linux
+      - name: cmake-builder.sh
+        run: |
+          cmake/cmake-builder.sh --config Release --flavor unix --lto --notest --noinstall --parallel --verbose
+      - name: SIMH simulator suite test
+        run: |
           cmake/cmake-builder.sh --config Release --flavor unix --testonly
 
   cmake-vs2022xp:
-    name: VS 2022 XP-compatible 
+    name: VS 2022 XP-compatible LEGACY
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -76,7 +99,13 @@ jobs:
             }
             $env:Path = $fixPATH
             ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -clean -lto -verbose -notest -noinstall
+      - name: SIMH simulator suite test
+        shell: pwsh
+        run: |
             ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -testOnly
+      - name: SIMH simulator suite install and package
+        shell: pwsh
+        run: |
             ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -installOnly
             ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -package
 
@@ -86,7 +115,7 @@ jobs:
           path: cmake/build-vs2022-xp/simh-4.0.0-win32-vs2022xp.zip
 
   cmake-vs2022:
-    name: VS 2022 Win10 native
+    name: VS 2022 Win10 native VCPKG
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -105,20 +134,31 @@ jobs:
             $fixPATH = $env:Path
             foreach ($path in ${fixPATH}.Split(";")) {
                 if ($path -like "*\Strawberry\*" -or $path -like "*/Strawberry/*") {
-                    $fixPATH = $fixPATH.Replace($path ,"")
+                    $fixPATH = $fixPATH.Replace($path, "")
                 }
             }
             $env:Path = $fixPATH
+            # Make this a vcpkg build:
+            $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
+            Push-Location $env:VCPKG_ROOT
+            git pull
+            Pop-Location
             ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -clean -lto -verbose -notest -noinstall
+      - name: SIMH simulator suite test
+        shell: pwsh
+        run: |
             ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -testOnly
+      - name: SIMH simulator suite install and package
+        shell: pwsh
+        run: |
             ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -installOnly
             ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -package
 
       - uses: actions/upload-artifact@v3
         with:
           name: simh-4.0.0-win32-vs2022
-          path: cmake/build-vs2022/simh-4.0.0-win32-vs2022.zip
-  
+          path: cmake/build-vs2022/simh-4.0.0-win32-Release-vs2022.zip
+
   makefile:
     runs-on: ${{ matrix.os }}
     strategy:

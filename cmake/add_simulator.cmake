@@ -49,7 +49,9 @@ function(build_simcore _targ)
 
     # Components that need to be turned on while building the library, but
     # don't export out to the dependencies (hence PRIVATE.)
-    set_target_properties(${_targ} PROPERTIES C_STANDARD 99)
+    set_target_properties(${_targ} PROPERTIES
+        C_STANDARD 99
+    )
     target_compile_definitions(${_targ} PRIVATE USE_SIM_CARD USE_SIM_IMD)
     target_compile_options(${_targ} PRIVATE ${EXTRA_TARGET_CFLAGS})
     target_link_options(${_targ} PRIVATE ${EXTRA_TARGET_LFLAGS})
@@ -91,7 +93,7 @@ function(build_simcore _targ)
 
     # Define SIM_BUILD_TOOL for the simulator'
     target_compile_definitions("${_targ}" PRIVATE
-         "SIM_BUILD_TOOL=CMake using the \"${CMAKE_GENERATOR}\" generator"
+         "SIM_BUILD_TOOL=CMake (${CMAKE_GENERATOR})"
     )
     # Ensure that sim_rev.h picks up .git-commit-id.h if the git command is
     # available.

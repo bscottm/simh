@@ -287,34 +287,97 @@ binaries.
   - MinGW-w64 Win64 console:
   
     ```bash
+    $ echo $MSYSTEM
+    MINGW64
     $ .travis/deps.sh mingw64
     ```
-
-    _NOTE:_ Check the `$MSYSTEM` environment variable at the shell prompt and
-    ensure that it is set to `MINGW64`.
 
   - MinGW-w64 UCRT console:
   
     ```bash
+    $ echo $MSYSTEM
+    UCRT64
     $ .travis/deps.sh ucrt64
     ```
 
-    _NOTE:_ Check the `$MSYSTEM` environment variable at the shell prompt and
-    ensure that it is  set to `UCRT64`.
-
 #### Windows
 
-Windows will build feature libraries if they aren't detected or found,
-installing the header files and libraries underneath `cmake/dependencies`
-subdirectory. The SIMH `CMake` configuration generates a a _superbuild_ that
-downloads, compiles, installs the dependency feature libraries prior to building
-the simulator suite. The _superbuild_ should only happen once.
+The SIMH CMake infrastructure has two distinct feature library dependency
+strategies: the _"legacy"_ superbuild and `vcpkg`. The principal differences
+between the two strategies are:
 
-NOTE: `vcpkg` is not currently supported as a dependency manager because one of
-the requirements of the `simh` maintainers is the ability to produce Windows
-XP-compatible packages, for which a `vcpkg` triplet does not exist. Building
-XP-compatible binaries may be possible via the Universal Windows Platform/UCRT,
-but this needs experimentation and verification before switching to `vcpkg`.
+  1. _"legacy"_ can produce Windows XP-compatible executables.
+
+  2. `vcpkg` has robust compiler support for MS Visual Studio compilers. Using
+     GCC or Clang with vcpkg is a work-in-progress.
+
+  3. `vcpkg` has a larger open source ecosystem and better long term support
+     outlook[^1].
+
+  4. _"legacy"_ installs the minimal dependency features necessary to avoid
+     becoming its own "ports" system (which is what `vcpkg` provides.) For
+     example, _"legacy"_ does not install `bzip2` as a `libpng` subdependency,
+     which limits the compression methods available to `libpng` when capturing
+     screenshots.
+     
+  5. `vcpkg` installs more subdependencies, potentially increasing
+     functionality. Continuing `libpng` as the example, `vcpkg` will install
+     `bzip2` as a subdependency, which adds compression methods to `libpng` when
+     capturing simulator screenshots. `vcpkg` also installs the Harfbuzz text
+     shaper as a Freetype subdependency.
+
+  6. _"legacy"_ compiles the dependency libraries as part of the overall
+     compile/build process.
+     
+  7. `vcpkg` compiles and installs dependencies during the CMake configuration
+     step, which makes the configuration process longer.
+
+Setup and Usage:
+
+- _"legacy"_ superbuild
+
+    This is the default dependency feature library build strategy. It will
+    download, compile and install the minimal feature libraries necessary to
+    support the SIMH simulators: `zlib`, `libpng`, `pcre` (version 1, not
+    PCRE2), `freetype`, `SDL2` and `SDL_ttf`. The CMake configuration process
+    generates a _superbuild_ that installs the dependencies under the
+    `cmake/dependencies` subdirectory tree. Once the dependency feature
+    libraries finish building successfully, the _superbuild_ invokes CMake to
+    reconfigure SIMH to use these newly installed dependencies.
+
+- [`vcpkg`](https://vcpkg.io)
+  
+  Simply set the `VCPKG_ROOT` environment variable to use the `vcpkg` strategy.
+  `vcpkg` operates in [Manifest mode][vcpkg_manifest]; refer to the `vcpkg.json`
+  manifest file.
+
+  The default platform triplets for  the Visual Studio compilers are
+  `x86-windows-static` and `x64-windows-static`, depending on the architecture
+  flag passed to CMake.
+  
+  The `x64-mingw-dynamic` triplet is known to work from within a MinGW-w64
+  console/terminal window using the GCC compiler.
+
+  If you haven't git-cloned `vcpkg`, `git clone vcpkg` somewhere outside of the
+  SIMH source tree. For example, you could choose to clone `vcpkg` in the
+  directory above `open-simh`:
+
+        ```powershell
+        PS C:\...\open-simh> pwd
+        C:\...\open-simh
+        PS C:\...\open-simh> cd ..
+        PS C:\...> git clone https://github.com/Microsoft/vcpkg.git
+        PS C:\...> cd vcpkg
+        PS C:\...\vcpkg> .\vcpkg\bootstrap-vcpkg.bat
+        PS C:\...\vcpkg> cd ..\open-simh
+        PS C:\...\open-simh> 
+        ```
+  Then set the `VCPKG_ROOT` environment variable to the `vcpkg` installaton directory.
+    
+[^1]: `vcpkg` does not support the `v141_xp` toolkit required to compile Windows
+XP binaries. Windows XP is a target platform that SIMH can hopefully deprecate
+in the future. For the time being, Windows XP is a target platform that is part
+of the CI/CD pipelines and requires the _"legacy"_ superbuild strategy.
 
 
 ### CMake Directory Structure
@@ -347,7 +410,9 @@ simh                          # Top-level SIMH source directory
 |    +-- 
 |   +-- dependencies      # Install subdirectory for Windows dependency libraries
 |   |   +-- Windows-<platform and compiler version> 
-|   |   |   |...          # Feature library subdirectory for Windows builds
+|   |   |   |...          # Feature library subdirectory for Windows legacy
+|   |   |   |...          # dependency superbuilds
+|...
 +-- out                   # Visual Studio build directories. See note 5.
 |   +-- build
 |   +-- install
@@ -1459,6 +1524,7 @@ generate.py: exp target sage
 [sublime]: https://www.sublimetext.com
 [util-linux]: https://git.kernel.org/pub/scm/utils/util-linux/util-linux.git/
 [v141_xp]: https://stackoverflow.com/questions/49516896/how-to-install-build-tools-for-v141-xp-for-vc-2017
+[vcpkg_manifest]: https://learn.microsoft.com/en-us/vcpkg/users/manifests
 [vs_community]: https://visualstudio.microsoft.com/vs/community/
 [winflexbison]: https://github.com/lexxmark/winflexbison
 [winsdk_download]: https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/

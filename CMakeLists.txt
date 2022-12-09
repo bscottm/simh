@@ -1,3 +1,6 @@
+## Note: pthreads4w requires 3.14 or better.
+cmake_minimum_required(VERSION 3.14)
+
 if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message("")
   message("*** Do NOT build or generate CMake artifacts in the SIMH source directory! ***")
@@ -11,24 +14,53 @@ if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR "Preventing in-tree source build.")
 endif ()
 
-## Note: pthreads4w requires 3.14 or better.
-cmake_minimum_required(VERSION 3.14)
+# Places to look for CMake modules/includes
+set(SIMH_INCLUDE_PATH_LIST ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${SIMH_INCLUDE_PATH_LIST})
+message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
-## Respect MSVC_RUNTIME_LIBRARY's setting. Has to be set before project(),
-## otherwise it'd have been put into platform-quirks.
+## vcpkg sanity checking: Cannot use vcpkg and XP toolkit together. If this is
+## a XP build, disable vcpkg:
+set(USING_VCPKG FALSE)
+if (DEFINED ENV{VCPKG_ROOT})
+    if (CMAKE_GENERATOR_TOOLSET MATCHES "v[0-9][0-9][0-9]_xp")
+        message(FATAL_ERROR
+            "Configuration conflict: Cannot build XP binaries with vcpkg. Either "
+            "unset VCPKG_ROOT in your environment or remove the '-T' toolkit option."
+            "\n"
+            "Also remove CMakeCache.txt and recursively remove the CMakeFiles "
+            "subdirectory in your build folder before reconfiguring.")
+    endif ()
+
+    set(USING_VCPKG TRUE)
+
+    ## Defer loading the CMAKE_TOOLCHAIN_FILE:
+    set(SIMH_CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    if(DEFINED CMAKE_TOOLCHAIN_FILE)
+        ## Use the user's provided toolchain file, but load it later.
+        message(STATUS "Deferring CMAKE_TOOLCHAIN_FILE load.")
+        set(SIMH_CMAKE_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}")
+        unset(CMAKE_TOOLCHAIN_FILE)
+        unset(CMAKE_TOOLCHAIN_FILE CACHE)
+    endif()
+
+    file(TO_CMAKE_PATH "${SIMH_CMAKE_TOOLCHAIN_FILE}" SIMH_CMAKE_TOOLCHAIN_FILE)
+    message(STATUS "SIMH_CMAKE_TOOLCHAIN_FILE is ${SIMH_CMAKE_TOOLCHAIN_FILE}")
+endif ()
+
+## Respect MSVC_RUNTIME_LIBRARY's setting. the policy has to be set before
+## project(), otherwise it'd have been put into platform-quirks.
 ##
 ## Note: See cmake\build_dep_matrix.cmake to see how this is propagated down
 ## into the dependency libraries.
-##
-if (POLICY CMP0091)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
     cmake_policy(SET CMP0091 NEW)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    set(MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 set(SIMH_VERSION "4.0.0")
 project(simh VERSION "${SIMH_VERSION}" LANGUAGES C CXX)
 
+include(vcpkg-setup)
 include(GNUInstallDirs)
 
 ## Provide a default CMAKE_BUILD_TYPE if CMAKE_CONFIGURATION_TYPES is empty or not defined.
@@ -40,11 +72,6 @@ if (NOT CMAKE_CONFIGURATION_TYPES)
         message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
     endif (NOT CMAKE_BUILD_TYPE)
 endif ()
-
-# Places to look for CMake modules/includes
-set(SIMH_INCLUDE_PATH_LIST ${CMAKE_SOURCE_DIR}/cmake)
-list(APPEND CMAKE_MODULE_PATH ${SIMH_INCLUDE_PATH_LIST})
-message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
 # SIMH_SYSTEM_ID: Roughly analogous to the autoconf system triple. Used (almost exclusively)
 # as part of the depedencies' top-level directory name. 
@@ -84,7 +111,7 @@ set(SIMH_DEP_PATCHES ${CMAKE_SOURCE_DIR}/cmake/patches
 ##-- Options --##
 if (NOT DEFINED NO_DEP_BUILD)
     ## For Windows, always build dependencies
-    if (WIN32 AND NOT DEFINED ENV{MSYSTEM})
+    if (WIN32 AND NOT DEFINED ENV{MSYSTEM} AND NOT USING_VCPKG)
         message(STATUS "Setting NO_DEP_BUILD to FALSE, will BUILD missing dependencies")
         set(NO_DEP_BUILD_OPTVAL FALSE)
     else ()
@@ -157,18 +184,22 @@ option(DEBUG_WALL
 
 # Places where CMake should look for dependent package configuration fragments and artifacts:
 set(SIMH_PREFIX_PATH_LIST)
-if (NOT NO_DEP_BUILD)
+if (NOT (USING_VCPKG OR NO_DEP_BUILD))
     list(APPEND CMAKE_INCLUDE_PATH ${SIMH_DEP_TOPDIR})
     list(APPEND SIMH_PREFIX_PATH_LIST ${SIMH_DEP_TOPDIR})
     list(APPEND CMAKE_PREFIX_PATH ${SIMH_PREFIX_PATH_LIST})
 endif ()
+
+## libpcap, if not found, will put its headers in $CMAKE_BINARY_DIR/include.
+## Make sure we can find them.
+list(APPEND CMAKE_INCLUDE_PATH "${CMAKE_BINARY_DIR}/include")
 
 ## Additional command line arguments for dependencies. Need this because Powershell will report
 ## an error if anything is sent to stderr and $ErrorDefaultAction is set to "Stop".
 set(DEP_CMAKE_ARGS "-Wno-dev" "--no-warn-unused-cli")
 
 ## build-stage directory hierarchy for dependency installs:
-if (NOT NO_DEP_BUILD AND NOT EXISTS ${SIMH_DEP_TOPDIR})
+if (NOT (USING_VCPKG OR NO_DEP_BUILD) AND NOT EXISTS ${SIMH_DEP_TOPDIR})
     message(STATUS "Creating dependency library directory hierarchy")
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E make_directory ${SIMH_DEP_TOPDIR} ${SIMH_DEP_TOPDIR}/include ${SIMH_DEP_TOPDIR}/lib 
@@ -187,12 +218,15 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   endif ()
 endif()
 
-if (NOT NO_DEP_BUILD)
+## Source directory is always on the global include path.
+include_directories(${CMAKE_SOURCE_DIR})
+
+if (NOT USING_VCPKG AND NOT NO_DEP_BUILD)
     # Make sure we can include and link from the dependency directory
     list(APPEND CMAKE_LIBRARY_PATH ${SIMH_DEP_TOPDIR}/lib)
     link_directories(${SIMH_DEP_TOPDIR}/lib)
     list(APPEND CMAKE_INCLUDE_PATH ${SIMH_DEP_TOPDIR}/include)
-    include_directories(${CMAKE_SOURCE_DIR} ${SIMH_DEP_TOPDIR}/include)
+    include_directories(${SIMH_DEP_TOPDIR}/include)
 endif ()
 
 ## CMake policy tweaks
@@ -230,11 +264,20 @@ include(CheckTypeSize)
 include(ExternalProject)
 include(FindPackageHandleStandardArgs)
 
-# SIMH local:
+# SIMH local packages:
+if (USING_VCPKG)
+    ## Sanity checking output: Ensure that vcpkg picked up the correct triplet
+    message(STATUS "VCPKG sanity check:\n"
+        "    .. VCPKG target triplet is ${VCPKG_TARGET_TRIPLET}\n"
+        "    .. VCPKG_CRT_LINKAGE is ${VCPKG_CRT_LINKAGE}\n"
+        "    .. CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
+        "    .. CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
+endif ()
+
 include(build_dep_matrix)
 include(os-features)
 include(dep-locate)
-include(dep-targets)
+include(dep-link)
 
 if (VIDEO_PKG_STATUS)
     string(REPLACE ";" ", " VIDEO_PKG_STATUS "${VIDEO_PKG_STATUS}")
