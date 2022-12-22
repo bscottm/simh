@@ -208,15 +208,17 @@ if (NOT (USING_VCPKG OR NO_DEP_BUILD) AND NOT EXISTS ${SIMH_DEP_TOPDIR})
     )
 endif ()
 
-## Default install location is ${CMAKE_SOURCE_DIR}/BIN if not otherwise set
+## Default install location is ${CMAKE_SOURCE_DIR}/SIMH-install if not otherwise set
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/" CACHE PATH "${CMAKE_SOURCE_DIR} default install prefix" FORCE)
-  set(CMAKE_INSTALL_BINDIR BIN CACHE PATH "BIN default binary install directory" FORCE)
-
-  if (CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_INSTALL_BINDIR "BIN/Win32/$<CONFIG>" CACHE PATH "BIN/Win32/<config> default binary install directory" FORCE)
-  endif ()
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/SIMH-install" CACHE PATH "${CMAKE_SOURCE_DIR}/SIMH-install default install prefix" FORCE)
 endif()
+
+## The default runtime output directory is the BIN subdirectory in the source tree's top
+set(SIMH_LEGACY_INSTALL "${CMAKE_SOURCE_DIR}/BIN")
+if (WIN32)
+    string(APPEND SIMH_LEGACY_INSTALL "/Win32")
+endif()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SIMH_LEGACY_INSTALL})
 
 ## Source directory is always on the global include path.
 include_directories(${CMAKE_SOURCE_DIR})
@@ -261,7 +263,6 @@ include(CheckCCompilerFlag)
 include(CheckIncludeFile)
 include(CheckSymbolExists)
 include(CheckTypeSize)
-include(ExternalProject)
 include(FindPackageHandleStandardArgs)
 
 # SIMH local packages:
@@ -269,9 +270,10 @@ if (USING_VCPKG)
     ## Sanity checking output: Ensure that vcpkg picked up the correct triplet
     message(STATUS "VCPKG sanity check:\n"
         "    .. VCPKG target triplet is ${VCPKG_TARGET_TRIPLET}\n"
-        "    .. VCPKG_CRT_LINKAGE is ${VCPKG_CRT_LINKAGE}\n"
-        "    .. CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
-        "    .. CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
+        "    .. VCPKG_CRT_LINKAGE is ${VCPKG_CRT_LINKAGE}"
+        ## "    .. CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
+        ## "    .. CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}
+    )
 endif ()
 
 include(build_dep_matrix)
@@ -399,6 +401,7 @@ else ()
 endif ()
 
 if (NOT DO_DEPENDENCY_BUILD)
+    include(cpack-setup)
     include (add_simulator)
     if (WITH_SLIRP)
       add_subdirectory(slirp)
@@ -438,9 +441,6 @@ if (NOT DO_DEPENDENCY_BUILD)
 
     message(STATUS "Adding simulators")
     include(simh-simulators)
-
-    message(STATUS "Setting up CPack configuration")
-    include(cpack-setup)
 else ()
     message(STATUS "")
     message(STATUS "Building the following dependency libraries:")

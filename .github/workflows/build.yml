@@ -16,17 +16,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
-        if: ${{runner.os == 'macOS'}}
-        run: sh -ex .travis/deps.sh osx
-      - name: Install dependencies
-        if: ${{runner.os == 'Linux'}}
-        run: sh -ex .travis/deps.sh linux
+        run: |
+          sh -ex .travis/deps.sh linux
+          sudo apt install -ym ninja-build
       - name: cmake-builder.sh
         run: |
-          cmake/cmake-builder.sh --config Release --flavor unix --lto --notest --noinstall --parallel --verbose
+          cmake/cmake-builder.sh --config Release --flavor ninja --lto --notest --noinstall --parallel --verbose
       - name: SIMH simulator suite test
         run: |
-          cmake/cmake-builder.sh --config Release --flavor unix --testonly
+          cmake/cmake-builder.sh --config Release --flavor ninja --testonly
 
   cmake-macosx:
     name: CMake Mac OSX
@@ -37,17 +35,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
-        if: ${{runner.os == 'macOS'}}
-        run: sh -ex .travis/deps.sh osx
-      - name: Install dependencies
-        if: ${{runner.os == 'Linux'}}
-        run: sh -ex .travis/deps.sh linux
+        run: |
+          sh -ex .travis/deps.sh osx
       - name: cmake-builder.sh
         run: |
-          cmake/cmake-builder.sh --config Release --flavor unix --lto --notest --noinstall --parallel --verbose
+          cmake/cmake-builder.sh --config Release --flavor xcode --lto --notest --noinstall
       - name: SIMH simulator suite test
         run: |
-          cmake/cmake-builder.sh --config Release --flavor unix --testonly
+          cmake/cmake-builder.sh --config Release --flavor xcode --testonly
 
   cmake-vs2022xp:
     name: VS 2022 XP-compatible LEGACY

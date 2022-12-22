@@ -28,7 +28,7 @@ Configure and build SIMH's dependencies and simulators using the Microsoft Visua
 Studio C compiler or MinGW-W64-based gcc compiler.
 
 .DESCRIPTION
-This script executes the four (4) phases of building the entire suite of SIMH
+This script executes the three (3) phases of building the entire suite of SIMH
 simulators using the CMake meta-build tool. The phases are:
 
 1. Configure and generate the build environment selected by '-flavor' option.
@@ -37,7 +37,9 @@ simulators using the CMake meta-build tool. The phases are:
    generates optimized executables; the "Debug" configuration generates
    development executables with debugger information.
 3. Test the simulators
-4. Install the simulators in the source directory's BIN subdirectory.
+
+There is an install phase that can be invoked separately as part of the SIMH
+packaging process.
 
 The test and install phases can be enabled or disabled by the appropriate command line
 flag (e.g., '-noInstall', '-noTest', '-testOnly', '-installOnly'.)
@@ -403,7 +405,7 @@ elseif ($package) {
 }
 else
 {
-  $scriptPhases = @( "generate", "build", "test", "install")
+  $scriptPhases = @( "generate", "build", "test")
   if ($notest)
   {
       $scriptPhases = $scriptPhases | Where-Object { $_ -ne 'test' }
@@ -604,7 +606,7 @@ foreach ($phase in $scriptPhases) {
         }
     }
     catch {
-        Write-Host "Error running '$($psi.FileName) $($psi.Arguments)' command: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Error running '${phaseCommand} ${argList}' command: $($_.Exception.Message)" -ForegroundColor Red
         throw $_
     }
     finally {

@@ -95,6 +95,7 @@ function(build_simcore _targ)
     target_compile_definitions("${_targ}" PRIVATE
          "SIM_BUILD_TOOL=CMake (${CMAKE_GENERATOR})"
     )
+
     # Ensure that sim_rev.h picks up .git-commit-id.h if the git command is
     # available.
     if (GIT_COMMAND)
@@ -167,7 +168,10 @@ function (simh_executable_template _targ)
     endif (NOT DEFINED SIMH_SOURCES)
 
     add_executable("${_targ}" "${SIMH_SOURCES}")
-    set_target_properties(${_targ} PROPERTIES C_STANDARD 99)
+    set_target_properties(${_targ} PROPERTIES
+        C_STANDARD 99
+        RUNTIME_OUTPUT_DIRECTORY ${SIMH_LEGACY_INSTALL}
+    )
     target_compile_options(${_targ} PRIVATE ${EXTRA_TARGET_CFLAGS})
     target_link_options(${_targ} PRIVATE ${EXTRA_TARGET_LFLAGS})
 
@@ -226,9 +230,8 @@ function (add_simulator _targ)
     simh_executable_template(${_targ} "${ARGN}")
     cmake_parse_arguments(SIMH "${ADD_SIMULATOR_OPTIONS}" "${ADD_SIMULATOR_1ARG}" "${ADD_SIMULATOR_NARG}" ${ARGN})
 
-    # Remember to add the install rule, which defaults to ${CMAKE_SOURCE_DIR}/BIN.
-    # Installs the executables.
-    install(TARGETS "${_targ}" RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    ## Standard install:
+    install(TARGETS ${_targ} RUNTIME)
 
     ## Simulator-specific tests:
     list(APPEND test_cmd "${_targ}" "RegisterSanityCheck")

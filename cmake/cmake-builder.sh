@@ -27,6 +27,7 @@ Options:
 --flavor (-f)     Specifies the build flavor. Valid flavors are:
                     unix
                     ninja
+                    xcode
                     msys
                     msys2
                     mingw
@@ -170,6 +171,11 @@ while true; do
                 ninja|ucrt64)
                     buildFlavor=Ninja
                     buildSubdir=build-ninja
+                    shift 2
+                    ;;
+                xcode)
+                    buildFlavor=Xcode
+                    buildSubdir=build-xcode
                     shift 2
                     ;;
                 mingw|mingw64|msys|msys2)
@@ -320,6 +326,8 @@ if [[ x"${buildTarget}" != x ]]; then
     testArgs="${testArgs} -R simh-${buildTarget}"
 fi
 
+buildArgs="${buildArgs} --config ${buildConfig}"
+
 if [[ x$generateOnly = xyes ]]; then
     phases=generate
 elif [[ x$testOnly = xyes ]]; then
@@ -332,9 +340,6 @@ else
     phases="generate build"
     if [[ x${notest} != xyes ]]; then
         phases="${phases} test"
-    fi
-    if [[ x"${noinstall}" == x ]]; then
-        phases="${phases} install"
     fi
 fi
 
