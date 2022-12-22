@@ -21,7 +21,8 @@ import pprint
 
 import simgen.cmake_container as SCC
 import simgen.parse_makefile as SPM
-from simgen.text_file import TextFile
+import simgen.packaging as SPKG
+## from simgen.text_file import TextFile
 
 
 def process_makefile(makefile_dir, debug=0):
@@ -138,6 +139,8 @@ if __name__ == '__main__':
     debug_level = flags.get('debug')
     makefile_dir = flags.get('srcdir')
 
+    print('{0}: Expecting to emit {1} simulators.'.format(GEN_SCRIPT_NAME, len(SPKG.package_info.keys())))
+
     found_makefile = True
     if makefile_dir is None:
         ## Find the makefile, which should be one directory up from this Python
@@ -166,9 +169,24 @@ if __name__ == '__main__':
 
     sims = process_makefile(makefile_dir, debug=debug_level)
 
+    ## Sanity check: Make sure that all of the simulators in SPKG.package_info have
+    ## been encountered
+    for simdir in sims.dirs.keys():
+        for sim in sims.dirs[simdir].simulators.keys():
+            SPKG.package_info[sim].encountered()
+
+    orphans = [ sim for sim, pkg_info in SPKG.package_info.items() if not pkg_info.was_processed() ]
+    if len(orphans) > 0:
+        print('{0}: Simulators not extracted from makefile:'.format(GEN_SCRIPT_NAME))
+        for orphan in orphans: 
+            print('{0}{1}'.format(' ' * 4, orphan))
+        sys.exit(1)
+
     if debug_level >= 1:
         pp = pprint.PrettyPrinter()
         pp.pprint(sims)
 
     ## Emit all of the individual CMakeLists.txt
     sims.write_simulators(makefile_dir, debug=debug_level)
+    ## Emit the packaging data
+    SPKG.write_packaging(makefile_dir)

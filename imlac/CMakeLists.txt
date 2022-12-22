@@ -29,4 +29,5 @@ add_simulator(imlac
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL imlac
+    PKG_FAMILY imlac_family
     TEST imlac)

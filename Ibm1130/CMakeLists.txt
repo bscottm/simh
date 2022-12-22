@@ -32,4 +32,10 @@ add_simulator(ibm1130
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL Ibm1130
+    PKG_FAMILY ibm_family
     TEST ibm1130)
+
+if (WIN32)
+    target_compile_definitions(ibm1130 PRIVATE GUI_SUPPORT)
+    ## missing source in IBM1130?    ## target_sources(ibm1130 PRIVATE ibm1130.c)
+endif()

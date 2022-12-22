@@ -34,4 +34,5 @@ add_simulator(sigma
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL sigma
+    PKG_FAMILY sds_family
     TEST sigma)

@@ -31,4 +31,5 @@ add_simulator(sds
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL SDS
+    PKG_FAMILY sds_family
     TEST sds)

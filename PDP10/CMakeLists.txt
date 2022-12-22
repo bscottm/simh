@@ -43,6 +43,7 @@ add_simulator(pdp10
         VM_PDP10
     FEATURE_INT64
     LABEL PDP10
+    NO_INSTALL
     TEST pdp10)
 
 add_simulator(pdp10-ka
@@ -98,6 +99,7 @@ add_simulator(pdp10-ka
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL PDP10
+    PKG_FAMILY pdp10_family
     TEST ka10)
 
 if (PANDA_LIGHTS)
@@ -138,6 +140,7 @@ add_simulator(pdp10-ki
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL PDP10
+    PKG_FAMILY pdp10_family
     TEST ki10)
 
 add_simulator(pdp10-kl
@@ -169,6 +172,7 @@ add_simulator(pdp10-kl
         KL=1
     FEATURE_INT64
     LABEL PDP10
+    PKG_FAMILY pdp10_family
     TEST kl10)
 
 add_simulator(pdp10-ks
@@ -195,6 +199,7 @@ add_simulator(pdp10-ks
         KS=1
     FEATURE_INT64
     LABEL PDP10
+    PKG_FAMILY pdp10_family
     TEST ks10)
 
 add_simulator(pdp6
@@ -222,4 +227,5 @@ add_simulator(pdp6
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL PDP10
+    PKG_FAMILY decpdp_family
     TEST pdp6)

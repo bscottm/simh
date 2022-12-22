@@ -1,24 +1,3 @@
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-# THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-# 
-# Except as contained in this notice, the names of The Authors shall not be
-# used in advertising or otherwise to promote the sale, use or other dealings
-# in this Software without prior written authorization from the Authors.
-#
 # Author: B. Scott Michel (scooter.phd@gmail.com)
 # "scooter me fecit"
 
@@ -28,7 +7,7 @@ Configure and build SIMH's dependencies and simulators using the Microsoft Visua
 Studio C compiler or MinGW-W64-based gcc compiler.
 
 .DESCRIPTION
-This script executes the four (4) phases of building the entire suite of SIMH
+This script executes the three (3) phases of building the entire suite of SIMH
 simulators using the CMake meta-build tool. The phases are:
 
 1. Configure and generate the build environment selected by '-flavor' option.
@@ -37,7 +16,9 @@ simulators using the CMake meta-build tool. The phases are:
    generates optimized executables; the "Debug" configuration generates
    development executables with debugger information.
 3. Test the simulators
-4. Install the simulators in the source directory's BIN subdirectory.
+
+There is an install phase that can be invoked separately as part of the SIMH
+packaging process.
 
 The test and install phases can be enabled or disabled by the appropriate command line
 flag (e.g., '-noInstall', '-noTest', '-testOnly', '-installOnly'.)
@@ -107,6 +88,10 @@ param (
     [Parameter(Mandatory=$false)]
     [string] $config         = "Release",
 
+    ## Supply a suffix for CPack package names via -DSIMH_PACKAGE_SUFFIX
+    [Parameter(Mandatory=$false)]
+    [string] $cpack_suffix = "",
+
     ## (optional) Simulator to build (e.g., 'vax', 'pdp11', 'pdp8', ...)
     [Parameter(Mandatory=$false)]
     [string] $target         = "",
@@ -116,39 +101,39 @@ param (
     ## Clean (remove) the CMake build directory before configuring
     [Parameter(Mandatory=$false)]
     [switch] $clean          = $false,
-    [Parameter(Mandatory=$false)]
 
     ## Get help.
-    [switch] $help           = $false,
     [Parameter(Mandatory=$false)]
+    [switch] $help           = $false,
 
     ## Compile the SIMH simulator suite without network support.
-    [switch] $nonetwork      = $false,
     [Parameter(Mandatory=$false)]
+    [switch] $nonetwork      = $false,
 
     ## Compile the SIMH simulator suite without video support.
-    [switch] $novideo        = $false,
     [Parameter(Mandatory=$false)]
+    [switch] $novideo        = $false,
 
     ## Disable the build's tests.
-    [switch] $notest         = $false,
     [Parameter(Mandatory=$false)]
+    [switch] $notest         = $false,
 
     ## Do not install the simulator suite in the source directory's BIN
     ## subdirectory.
-    [switch] $noinstall      = $false,
     [Parameter(Mandatory=$false)]
+    [switch] $noinstall      = $false,
 
     ## Enable parallel builds.
-    [switch] $parallel       = $false,
     [Parameter(Mandatory=$false)]
+    [switch] $parallel       = $false,
 
     ## Configure and generate the build environment. Don't compile, test or install.
-    [switch] $generate       = $false,
     [Parameter(Mandatory=$false)]
+    [switch] $generate       = $false,
 
     ## Delete the CMake cache, configure and regenerate the build environment.
     ## Don't compile, test or install.
+    [Parameter(Mandatory=$false)]
     [switch] $regenerate     = $false,
 
     ## Only run the tests.
@@ -403,7 +388,7 @@ elseif ($package) {
 }
 else
 {
-  $scriptPhases = @( "generate", "build", "test", "install")
+  $scriptPhases = @( "generate", "build", "test")
   if ($notest)
   {
       $scriptPhases = $scriptPhases | Where-Object { $_ -ne 'test' }
@@ -420,7 +405,7 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     if ((Test-Path -Path ${buildDir}) -and $clean)
     {
         Write-Host "** ${scriptName}: Removing ${buildDir}"
-        Remove-Item -recurse -force -Path ${buildDir} -ErrorAction Continue | Out-Null
+        Remove-Item -recurse -force -Path ${buildDir} -ErrorAction SilentlyContinue | Out-Null
     }
 
     if (!(Test-Path -Path ${buildDir}))
@@ -436,8 +421,8 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     ## Need to regenerate?
     if ($regenerate)
     {
-      Remove-Item          -Force -Path ${buildDir}/CMakeCache.txt -ErrorAction Continue | Out-Null
-      Remove-Item -Recurse -Force -Path ${buildDir}/CMakeFiles     -ErrorAction Continue | Out-Null
+      Remove-Item          -Force -Path ${buildDir}/CMakeCache.txt -ErrorAction SilentlyContinue | Out-Null
+      Remove-Item -Recurse -Force -Path ${buildDir}/CMakeFiles     -ErrorAction SilentlyContinue | Out-Null
     }
    
     ## Where we do the heaving lifting:
@@ -466,6 +451,10 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     if ($debug_wall)
     {
         $generateArgs += @("-DDEBUG_WALL:Bool=On")
+    }
+    if (![String]::IsNullOrEmpty($cpack_suffix))
+    {
+        $generateArgs += @("-DSIMH_PACKAGE_SUFFIX:Bool=${cpack_suffix}")
     }
 
     $buildArgs     =  @("--build", "${buildDir}", "--config", "${config}")
@@ -604,7 +593,7 @@ foreach ($phase in $scriptPhases) {
         }
     }
     catch {
-        Write-Host "Error running '$($psi.FileName) $($psi.Arguments)' command: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Error running '${phaseCommand} ${argList}' command: $($_.Exception.Message)" -ForegroundColor Red
         throw $_
     }
     finally {

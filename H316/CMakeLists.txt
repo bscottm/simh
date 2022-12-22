@@ -33,4 +33,5 @@ add_simulator(h316
     DEFINES
         VM_IMPTIP
     LABEL H316
+    PKG_FAMILY honeywell_family
     TEST h316)

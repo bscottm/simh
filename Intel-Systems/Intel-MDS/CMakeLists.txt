@@ -43,4 +43,5 @@ add_simulator(intel-mds
         ${CMAKE_CURRENT_SOURCE_DIR}
     BUILDROMS
     LABEL Intel-Systems
+    PKG_FAMILY intel_family
     TEST intel-mds)

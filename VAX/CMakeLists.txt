@@ -142,6 +142,7 @@ add_simulator(infoserver100
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(infoserver1000
@@ -170,6 +171,7 @@ add_simulator(infoserver1000
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(infoserver150vxt
@@ -186,6 +188,7 @@ add_simulator(infoserver150vxt
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax1
@@ -229,6 +232,7 @@ add_simulator(microvax1
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax2
@@ -244,6 +248,7 @@ add_simulator(microvax2
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax2000
@@ -280,6 +285,7 @@ add_simulator(microvax2000
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax3100
@@ -296,6 +302,7 @@ add_simulator(microvax3100
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax3100e
@@ -312,6 +319,7 @@ add_simulator(microvax3100e
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax3100m80
@@ -326,6 +334,7 @@ add_simulator(microvax3100m80
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(rtvax1000
@@ -340,6 +349,7 @@ add_simulator(rtvax1000
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax
@@ -354,31 +364,41 @@ add_simulator(vax
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
-set(vax_symlink_dir_src ${CMAKE_CURRENT_BINARY_DIR})
+set(vax_binary_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 if (CMAKE_CONFIGURATION_TYPES)
-    string(APPEND vax_symlink_dir_src "/$<CONFIG>")
+    string(APPEND vax_binary_dir "/$<CONFIG>")
 endif (CMAKE_CONFIGURATION_TYPES)
 
-if (NOT WIN32)
-    add_custom_command(TARGET vax POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink vax${CMAKE_EXECUTABLE_SUFFIX} microvax3900${CMAKE_EXECUTABLE_SUFFIX}
-        COMMENT "Symlink vax${CMAKE_EXECUTABLE_SUFFIX} to microvax3900${CMAKE_EXECUTABLE_SUFFIX}"
-        WORKING_DIRECTORY ${vax_symlink_dir_src})
-
-    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink vax${CMAKE_EXECUTABLE_SUFFIX} microvax3900${CMAKE_EXECUTABLE_SUFFIX}         WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\")"
-    )
-else ()
-    add_custom_command(TARGET vax POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different vax${CMAKE_EXECUTABLE_SUFFIX} microvax3900${CMAKE_EXECUTABLE_SUFFIX}
-        COMMENT "Copy vax${CMAKE_EXECUTABLE_SUFFIX} to microvax3900${CMAKE_EXECUTABLE_SUFFIX}"
-        WORKING_DIRECTORY ${vax_symlink_dir_src})
-
-    install(FILES ${vax_symlink_dir_src}/microvax3900${CMAKE_EXECUTABLE_SUFFIX}
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}"
-    )
-endif ()
+add_custom_command(TARGET vax POST_BUILD
+    COMMAND "${CMAKE_COMMAND}"
+        -DSRCFILE=vax${CMAKE_EXECUTABLE_SUFFIX}
+        -DDSTFILE=microvax3900${CMAKE_EXECUTABLE_SUFFIX}
+        -DWORKING_DIR=${vax_binary_dir}
+        -P ${CMAKE_SOURCE_DIR}/cmake/file-link-copy.cmake
+    COMMENT "Symlink vax${CMAKE_EXECUTABLE_SUFFIX} to microvax3900${CMAKE_EXECUTABLE_SUFFIX}"
+    WORKING_DIRECTORY ${vax_binary_dir})
+ 
+# if (NOT WIN32)
+#     add_custom_command(TARGET vax POST_BUILD
+#         COMMAND "${CMAKE_COMMAND}" -E create_symlink vax${CMAKE_EXECUTABLE_SUFFIX} microvax3900${CMAKE_EXECUTABLE_SUFFIX}
+#         COMMENT "Symlink vax${CMAKE_EXECUTABLE_SUFFIX} to microvax3900${CMAKE_EXECUTABLE_SUFFIX}"
+#         WORKING_DIRECTORY ${vax_symlink_dir_src})
+# 
+#     install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink vax${CMAKE_EXECUTABLE_SUFFIX} microvax3900${CMAKE_EXECUTABLE_SUFFIX}         WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}")"
+#     )
+# else ()
+#     add_custom_command(TARGET vax POST_BUILD
+#         COMMAND "${CMAKE_COMMAND}" -E copy_if_different vax${CMAKE_EXECUTABLE_SUFFIX} microvax3900${CMAKE_EXECUTABLE_SUFFIX}
+#         COMMENT "Copy vax${CMAKE_EXECUTABLE_SUFFIX} to microvax3900${CMAKE_EXECUTABLE_SUFFIX}"
+#         WORKING_DIRECTORY ${vax_symlink_dir_src})
+# 
+#     install(FILES ${vax_symlink_dir_src}/microvax3900${CMAKE_EXECUTABLE_SUFFIX}
+#             DESTINATION "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}"
+#     )
+# endif ()
 
 
 
@@ -426,6 +446,7 @@ add_simulator(vax730
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax750
@@ -474,6 +495,7 @@ add_simulator(vax750
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax780
@@ -523,6 +545,7 @@ add_simulator(vax780
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax8200
@@ -570,6 +593,7 @@ add_simulator(vax8200
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax8600
@@ -618,6 +642,7 @@ add_simulator(vax8600
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation3100m30
@@ -634,6 +659,7 @@ add_simulator(vaxstation3100m30
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation3100m38
@@ -650,6 +676,7 @@ add_simulator(vaxstation3100m38
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation3100m76
@@ -684,6 +711,7 @@ add_simulator(vaxstation3100m76
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation4000m60
@@ -698,6 +726,7 @@ add_simulator(vaxstation4000m60
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation4000vlc
@@ -712,4 +741,5 @@ add_simulator(vaxstation4000vlc
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)

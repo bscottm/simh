@@ -55,4 +55,5 @@ add_simulator(hp2100
     DEFINES
         HAVE_INT64
     LABEL HP2100
+    PKG_FAMILY hp_family
     TEST hp2100)

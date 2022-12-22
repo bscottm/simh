@@ -26,4 +26,5 @@ add_simulator(tx-0
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL TX-0
+    PKG_FAMILY simh_suite
     TEST tx-0)

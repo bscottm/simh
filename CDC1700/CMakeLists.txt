@@ -34,4 +34,5 @@ add_simulator(cdc1700
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL CDC1700
+    PKG_FAMILY cdc1700_family
     TEST cdc1700)

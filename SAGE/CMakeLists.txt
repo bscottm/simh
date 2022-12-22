@@ -37,4 +37,5 @@ add_simulator(sage
     DEFINES
         HAVE_INT64
     LABEL SAGE
+    PKG_FAMILY experimental
     TEST sage)

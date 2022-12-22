@@ -15,7 +15,9 @@ if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif ()
 
 # Places to look for CMake modules/includes
-set(SIMH_INCLUDE_PATH_LIST ${CMAKE_SOURCE_DIR}/cmake)
+set(SIMH_INCLUDE_PATH_LIST
+    ${CMAKE_SOURCE_DIR}/cmake
+    ${CMAKE_SOURCE_DIR}/cmake/installers)
 list(APPEND CMAKE_MODULE_PATH ${SIMH_INCLUDE_PATH_LIST})
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
@@ -57,7 +59,12 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
     cmake_policy(SET CMP0091 NEW)
 endif()
 
-set(SIMH_VERSION "4.0.0")
+## SIMH Version variables:
+set(SIMH_VERSION_MAJOR 4)
+set(SIMH_VERSION_MINOR 0)
+set(SIMH_VERSION_PATCH 0)
+set(SIMH_VERSION "${SIMH_VERSION_MAJOR}.${SIMH_VERSION_MINOR}.${SIMH_VERSION_PATCH}")
+
 project(simh VERSION "${SIMH_VERSION}" LANGUAGES C CXX)
 
 include(vcpkg-setup)
@@ -89,8 +96,13 @@ list(GET version_list 0 version_major)
 list(GET version_list 1 version_minor)
 if (NOT version_minor)
   set(version_minor 0)
-endif (NOT version_minor)
+endif ()
 string(APPEND SIMH_SYSTEM_ID "-${version_major}.${version_minor}")
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    string(APPEND SIMH_SYSTEM_ID "-64")
+else ()
+    string(APPEND SIMH_SYSTEM_ID "-32")
+endif ()
 if (CMAKE_GENERATOR MATCHES "Visual Studio .*" AND CMAKE_GENERATOR_TOOLSET MATCHES "v[0-9][0-9][0-9]_xp")
     string(APPEND SIMH_SYSTEM_ID "-XP")
 endif ()
@@ -181,6 +193,9 @@ option(RELEASE_LTO
 option(DEBUG_WALL
        "Turn on maximal compiler warnings in Debug builds (e.g., \"-Wall\" or \"/W4\")"
        FALSE)
+option(SIMH_PACKAGE_SUFFIX
+       "Use -DSIMH_PACKAGE_SUFFIX as the packaging suffix for CPack artifacts."
+       "")
 
 # Places where CMake should look for dependent package configuration fragments and artifacts:
 set(SIMH_PREFIX_PATH_LIST)
@@ -208,15 +223,17 @@ if (NOT (USING_VCPKG OR NO_DEP_BUILD) AND NOT EXISTS ${SIMH_DEP_TOPDIR})
     )
 endif ()
 
-## Default install location is ${CMAKE_SOURCE_DIR}/BIN if not otherwise set
+## Default install location is ${CMAKE_SOURCE_DIR}/SIMH-install if not otherwise set
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/" CACHE PATH "${CMAKE_SOURCE_DIR} default install prefix" FORCE)
-  set(CMAKE_INSTALL_BINDIR BIN CACHE PATH "BIN default binary install directory" FORCE)
-
-  if (CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_INSTALL_BINDIR "BIN/Win32/$<CONFIG>" CACHE PATH "BIN/Win32/<config> default binary install directory" FORCE)
-  endif ()
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/SIMH-install" CACHE PATH "${CMAKE_SOURCE_DIR}/SIMH-install default install prefix" FORCE)
 endif()
+
+## The default runtime output directory is the BIN subdirectory in the source tree's top
+set(SIMH_LEGACY_INSTALL "${CMAKE_SOURCE_DIR}/BIN")
+if (WIN32)
+    string(APPEND SIMH_LEGACY_INSTALL "/Win32")
+endif()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SIMH_LEGACY_INSTALL})
 
 ## Source directory is always on the global include path.
 include_directories(${CMAKE_SOURCE_DIR})
@@ -261,7 +278,6 @@ include(CheckCCompilerFlag)
 include(CheckIncludeFile)
 include(CheckSymbolExists)
 include(CheckTypeSize)
-include(ExternalProject)
 include(FindPackageHandleStandardArgs)
 
 # SIMH local packages:
@@ -269,9 +285,10 @@ if (USING_VCPKG)
     ## Sanity checking output: Ensure that vcpkg picked up the correct triplet
     message(STATUS "VCPKG sanity check:\n"
         "    .. VCPKG target triplet is ${VCPKG_TARGET_TRIPLET}\n"
-        "    .. VCPKG_CRT_LINKAGE is ${VCPKG_CRT_LINKAGE}\n"
-        "    .. CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
-        "    .. CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
+        "    .. VCPKG_CRT_LINKAGE is ${VCPKG_CRT_LINKAGE}"
+        ## "    .. CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
+        ## "    .. CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}
+    )
 endif ()
 
 include(build_dep_matrix)
@@ -439,8 +456,8 @@ if (NOT DO_DEPENDENCY_BUILD)
     message(STATUS "Adding simulators")
     include(simh-simulators)
 
-    message(STATUS "Setting up CPack configuration")
     include(cpack-setup)
+    include(simh-packaging)
 else ()
     message(STATUS "")
     message(STATUS "Building the following dependency libraries:")

@@ -95,6 +95,7 @@ function(build_simcore _targ)
     target_compile_definitions("${_targ}" PRIVATE
          "SIM_BUILD_TOOL=CMake (${CMAKE_GENERATOR})"
     )
+
     # Ensure that sim_rev.h picks up .git-commit-id.h if the git command is
     # available.
     if (GIT_COMMAND)
@@ -138,6 +139,7 @@ list(APPEND ADD_SIMULATOR_OPTIONS
     "BUILDROMS"
     "FEATURE_VIDEO"
     "FEATURE_DISPLAY"
+    "NO_INSTALL"
     "BESM6_SDL_HACK"
 )
 
@@ -145,9 +147,12 @@ list(APPEND ADD_SIMULATOR_OPTIONS
 ## LABEL: The test name label, used to group tests, e.g., "VAX" for all of the
 ##   VAX simulator tests. If you want to run a subset of tests, add the "-L <regexp>"
 ##   argument to the ctest command line.
+## PKG_FAMILY: The simulator family to which a simulator belongs. If not specificed,
+##   defaults to "simh_suite".
 list(APPEND ADD_SIMULATOR_1ARG
     "TEST"
     "LABEL"
+    "PKG_FAMILY"
 )
 
 ## DEFINES: List of extra command line manifest constants ("-D" items)
@@ -167,7 +172,10 @@ function (simh_executable_template _targ)
     endif (NOT DEFINED SIMH_SOURCES)
 
     add_executable("${_targ}" "${SIMH_SOURCES}")
-    set_target_properties(${_targ} PROPERTIES C_STANDARD 99)
+    set_target_properties(${_targ} PROPERTIES
+        C_STANDARD 99
+        RUNTIME_OUTPUT_DIRECTORY ${SIMH_LEGACY_INSTALL}
+    )
     target_compile_options(${_targ} PRIVATE ${EXTRA_TARGET_CFLAGS})
     target_link_options(${_targ} PRIVATE ${EXTRA_TARGET_LFLAGS})
 
@@ -226,9 +234,12 @@ function (add_simulator _targ)
     simh_executable_template(${_targ} "${ARGN}")
     cmake_parse_arguments(SIMH "${ADD_SIMULATOR_OPTIONS}" "${ADD_SIMULATOR_1ARG}" "${ADD_SIMULATOR_NARG}" ${ARGN})
 
-    # Remember to add the install rule, which defaults to ${CMAKE_SOURCE_DIR}/BIN.
-    # Installs the executables.
-    install(TARGETS "${_targ}" RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    set(pkg_family "simh_suite")
+    if (SIMH_PKG_FAMILY)
+        set(pkg_family ${SIMH_PKG_FAMILY})
+    endif ()
+
+    install(TARGETS ${_targ} RUNTIME COMPONENT ${pkg_family})
 
     ## Simulator-specific tests:
     list(APPEND test_cmd "${_targ}" "RegisterSanityCheck")

@@ -16,6 +16,7 @@ _special_vars = frozenset(['DISPLAYL',
 _special_simulators = {
     "besm6": SBS.BESM6Simulator,
     "i650": SBS.IBM650Simulator,
+    "ibm1130": SBS.IBM1130Simulator,
     "pdp10-ka": SBS.KA10Simulator,
     "vax": VAXen.VAXSimulator,
     "vax730": VAXen.BasicVAXSimulator

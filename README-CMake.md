@@ -9,7 +9,7 @@
       - [Windows XP-compatible/Server 2003 binaries](#windows-xp-compatibleserver-2003-binaries)
     - [Feature Libraries](#feature-libraries)
       - [Linux, MacOSX and MinGW-w64](#linux-macosx-and-mingw-w64)
-      - [Windows](#windows)
+      - [Windows: "Legacy" superbuild or `vcpkg`](#windows-legacy-superbuild-or-vcpkg)
     - [CMake Directory Structure](#cmake-directory-structure)
   - [Building the simulators](#building-the-simulators)
     - [CMake Builder Scripts](#cmake-builder-scripts)
@@ -29,7 +29,7 @@
   - [Simulator Developer Notes](#simulator-developer-notes)
     - [How to compile a simulator: `add_simulator`](#how-to-compile-a-simulator-add_simulator)
     - [Simulator "core" libraries](#simulator-core-libraries)
-    - [`add_simulator` Reference](#add_simulator-reference)
+  - [`add_simulator` Reference](#add_simulator-reference)
     - [Adding a new simulator](#adding-a-new-simulator)
     - [Regenerating `CMakeLists.txt` from the `makefile`](#regenerating-cmakeliststxt-from-the-makefile)
 
@@ -43,6 +43,7 @@ framework. A sample of the supported build environments include:
   - Unix Makefiles
   - [MinGW Makefiles][mingw64]
   - [Ninja][ninja]
+  - Mac OSX XCode
   - MS Visual Studio solutions (2015, 2017, 2019, 2022)
   - IDE build wrappers ([Sublime Text][sublime] and [CodeBlocks][codeblocks])
 
@@ -51,7 +52,7 @@ building and installing dependency feature libraries, and consistent cross
 platform support were the initial motivations behind a [CMake][cmake]-based
 build infrastructure. Since then, that motivation expanded to supporting a wider
 variety of platforms and compiler combinations, streamlining the overall compile
-process and enhanced IDE integration.
+process, enhanced IDE integration and SIMH packaging.
 
 ## Before You Begin Building...
 
@@ -300,7 +301,7 @@ binaries.
     $ .travis/deps.sh ucrt64
     ```
 
-#### Windows
+#### Windows: "Legacy" superbuild or `vcpkg`
 
 The SIMH CMake infrastructure has two distinct feature library dependency
 strategies: the _"legacy"_ superbuild and `vcpkg`. The principal differences
@@ -386,72 +387,56 @@ The directory structure below is a guide to where to find things and where to
 look for things, such as simulator executables.
 
 ```
-simh                          # Top-level SIMH source directory
-+-- CMakeLists.txt            # Top-level CMake configuration file 
-+-- BIN                       # Linux, Unix-like, MacOSX install simulators under BIN
+simh                      # Top-level SIMH source directory
++-- CMakeLists.txt        # Top-level CMake configuration file 
++-- BIN                   # Simulator executables (note 1)
+|   +-- Debug
+|   +-- Release
 |   +-- Win32
-|       +-- Debug             # Visual Studio Debug configuration simulators
-|       +-- Release           # Visual Studio Release configuration simulators
-+-- cmake                     # CMake modules and build subdirectories
-|   +-- build-vs2022          # Build directory for VS-2022 (note 1)
-|   +-- build-vs2019          # Build directory for VS-2019 (note 1)
-|   |   |...
-|   |   +-- PDP11             # Build directory for the PDP-11 simulator
-|   |   |   +-- Release       # Build configuration subdirectory (note 2)
-|   |   |   |   +-- pdp11.exe # PDP-11 simulator executable
-|   +-- build-vs2017          # Build directory for VS-2017 (note 1)
-|   +-- build-vs2017-xp       # Build directory for VS-2017 v141_xp toolkit (note 1)
-|   +-- build-vs2015          # Build directory for VS-2015 (note 1)
-|   +-- build-unix            # Build directory for Unix Makefiles (note 1)
-|   +-- build-ninja           # Build directory for Ninja builder (note 1)
-|   |   |...
-|   |   +-- PDP11             # Build directory for pdp11 (note 2)
-|   |   |   +-- pdp11         # PDP-11 simulator executable
-|    +-- 
+|       +-- Debug
+|       +-- Release
++-- cmake                 # CMake modules and build subdirectories
+|   +-- build-vs2022      # Build directory for VS-2022 (note 2)
+|   +-- build-vs2019      # Build directory for VS-2019 (note 2)
+|   +-- build-vs2017      # Build directory for VS-2017 (note 2)
+|   +-- build-vs2017-xp   # Build directory for VS-2017 v141_xp toolkit (note 2)
+|   +-- build-vs2015      # Build directory for VS-2015 (note 2)
+|   +-- build-unix        # Build directory for Unix Makefiles (note 2)
+|   +-- build-ninja       # Build directory for Ninja builder (note 2)
 |   +-- dependencies      # Install subdirectory for Windows dependency libraries
-|   |   +-- Windows-<platform and compiler version> 
+|   |   +-- Windows-10-MSVC-19.34 
 |   |   |   |...          # Feature library subdirectory for Windows legacy
-|   |   |   |...          # dependency superbuilds
+|   |   |   |...          # dependency superbuilds (note 3)
 |...
-+-- out                   # Visual Studio build directories. See note 5.
++-- out                   # Visual Studio build directories (note 4)
 |   +-- build
 |   +-- install
 +-- 3b2
-|   +-- CMakeLists.txt    # CMake configuration file for the 3b2 simulator
+|   +-- CMakeLists.txt    # 3b2 simulator CMake configuration file 
 +-- alpha
-|   +-- CMakeLists.txt    # CMake configuration file for the alpha simulator
+|   +-- CMakeLists.txt    # alpha simulator CMake configuration file 
 |...
 +-- VAX
-|   +--  CMakeLists.txt   # CMake configuration file for the VAX simulators
+|   +--  CMakeLists.txt   # VAX simulators family CMake configuration file
 ```
 
 Notes:
-
-1. The `cmake-builder.ps1` and `cmake-builder.sh` scripts create the
+1. The `BIN` directory is where CMake directs the underlying build system to
+   place SIMH simulator executables. The `BIN` directory's structure varies,
+   depending on the underlying build system.
+   - Single configuration builders (`make`, `ninja`): Simulators executables
+     will appear directly underneath the `BIN` directory.
+   - Multi-configuration builders (`msbuild`, `xcodebuild`): The simulator
+     executables will appear underneath individual configuration subdirectories
+     ("Debug" and "Release").
+   - The Windows platform has its `Win32` subdirectory.
+2. The `cmake-builder.ps1` and `cmake-builder.sh` scripts create the
    `cmake/build-*` subdirectories as needed.
-2. Different build systems (Unix `make`, `ninja`, `msbuild`, ...) place the
-   simulator executables in slightly different places, depending on whether the
-   build system supports multiple, similtaneous compile configurations.
-    - Multi-configuration builders, specifically `msbuild`, create compile
-      configuration subdirectories, such as `Release` and `Debug`. Simulator
-      executables will be found underneath the compile configuration
-      subdirectories. The path to the `Release` PDP-11 simulator compiled using
-      Visual Studio 2019 is `build-vs2019\PDP11\Release\pdp11.exe` and
-      `build-vs2019\PDP11\Debug\pdp11.exe` for the Debug build.
-      - The same structure applies to the other versions of Visual Studio (2022,
-        2017, 2015), although not exhaustively diagrammed here for space
-        reasons.
-    - Single configuration builders, such as Unix `make` and `ninja`, place
-      simulator execuables underneath their respective simulator's build
-      subdirectory. For `make` and `ninja`, the path to the PDP-11 simulator
-      is `build-(unix|ninja)/PDP11/pdp11`.
-3. `Windows-10-MSVC-19.33` is an example feature library subdirectory created as
-   the installation area for VS 2022-built dependencies on Windows. Linux, MacOSX
-   and MinGW-w64 do not ordinarily build feature libraries because those
-   platforms install feature libraries via their respective package managers.
-4. The top level `CMakeLists.txt` is the main `cmake` configuration file. It
-   pulls in all of the simulator subdirectory `CMakeLists.txt`.
-5. The `out` subdirectory is the default build subdirectory hierarchy when
+3. `Windows-10-MSVC-19.34` is an example feature library subdirectory created as
+   the installation area for VS 2022-built dependencies on Windows. Linux,
+   MacOSX and MinGW-w64 do not feature libraries because those platforms install
+   feature libraries via their respective package managers.
+4. The `out` subdirectory is the default build subdirectory hierarchy when
    directly building the simulator suite using the Visual Studio IDE.
 
 
@@ -548,6 +533,7 @@ or video support.
     --flavor (-f)     Specifies the build flavor. Valid flavors are:
                         unix
                         ninja
+                        xcode
                         msys
                         msys2
                         mingw
@@ -635,8 +621,7 @@ or video support.
 ### CMake Command Line
 
 This section is targeted to simulator developers and build-from-source users who
-want or need fine-grained control over the configure/build/test/install
-workflow.
+want or need fine-grained control over the configure/build/test workflow.
 
 The thumbnail view of this process for both Linux/MacOSX/MinGW-w64 and Windows
 resembles:
@@ -658,11 +643,6 @@ resembles:
 5. Test
       ```sh
       ctest [ctest options]
-      ```
-
-6. Install
-      ```sh
-      cmake --install .
       ```
 
 #### Create a build directory
@@ -712,9 +692,6 @@ $ cmake --build .
 # Run the tests with a 5 minute timeout per test (most tests only require 2
 # minutes, SEL32 is a notable exception)
 $ ctest --build-config Release --output-on-failure --timeout 300
-
-# Install into the top level `BIN` directory inside the source tree:
-$ cmake --install .
 ```
 
 Examples of other things you can do from the command line: 
@@ -730,20 +707,20 @@ $ cmake --build . --target b5500
 $ make b5500
 
 # Need to reconfigure for a Debug configuration (you just built a Release
-# configuration above..)
+# configuration above..)?
 $ rm -rf CMakeCache.txt CMakeFiles
-$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -S ../..
+$ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -S ../.. -B .
 
 # Then build via cmake or make...
 ```
 
-To build with Ninja as the CMake generator (or any other available generator,
-see [here](#cmake-generators)), from the `simh` top-level source directory:
+To build with Ninja as the CMake generator (or [any other available generator](#cmake-generators)),
+from the `simh` top-level source directory:
 
 ```bash
 $ mkdir cmake/build-ninja
 $ cd cmake/build-ninja
-$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -S ../..
+$ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -S ../.. -B .
 $ cmake --build .
 
 # Build a specific simulator
@@ -755,9 +732,6 @@ $ ninja 3b2
 
 # Run the tests
 $ ctest --build-config Release --output-on-failure --timeout 300
-
-# Install into the top level `BIN` directory inside the source tree:
-$ cmake --install .
 ```
 
 #### Windows PowerShell walkthrough
@@ -789,9 +763,6 @@ PS> cmake --build . --config Release
 
 # Test
 PS> ctest --build-config Release --output-on-failure --timeout 300
-
-# Install into the top level `BIN\Win32\Release` directory inside the source tree:
-PS> cmake --install . --config Release
 ```
 
 The `cmake` Visual Studio generators create the solution file, which you
@@ -802,14 +773,16 @@ If you have [Ninja][ninja] installed, you can the following as your `cmake`
 configure command from inside a Visual Studio developer PowerShell console:
 
 ```powershell
-# Configure. Note that Ninja is a single configuration build system,
-# so you have to specify CMAKE_BUILD_TYPE at configuration time:
+# Configure.
+#
+# Note that Ninja is a single configuration build system, so you have to
+# specify CMAKE_BUILD_TYPE at configuration time:
 PS> cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -A Win32 -S ../..
 
 # Build.
 PS> ninja
 
-# Test and install steps are the same as above.
+# Test step is the same as above.
 ```
 
 #### Changing the Compiler
@@ -945,7 +918,8 @@ within the IDE. The walkthrough provides directions for VS 2022 and VS 2019.
 
 #### Quirks
 
-- Visual Studio uses the `ninja` build tool by default -- not `msbuild`.
+- Visual Studio uses the `ninja` build tool by default -- not `msbuild`. You can
+  change this setting via the "CMake Settings" pane.
 
 - The Visual Studio CMake build places the intermediate build products and
   artifacts in an `out\build` subdirectory relative to the `simh` top level
@@ -1172,8 +1146,8 @@ add_simulator(3b2
       simulator includes if the simulator uses header files in its own
       subdirectory.
 
-    - `DEFINES`: Command preprocessor defines, i.e., values that follow the
-      compiler's `-D` flags.
+    - `DEFINES`: Preprocessor defines needed by the simulator, i.e., values that
+      follow the compiler's `-D` flags.
 
     - `LABEL`: The simulator's `ctest` test label to which `add_simulator` will
       prepend `simh-`. `ctest` labels group simulators in the same subdirectory,
@@ -1195,7 +1169,7 @@ add_simulator(3b2
 
     - `TEST`: Some simulators have test scripts that follow the naming
       convention `[sim]_test.ini` -- the argument to the `TEST` parameter is the
-      `[sim]` portion of the test name.
+      `[sim]` portion of the test script's name.
 
 - Option keywords: These determine which of [six (6) simulator core libraries](#simulator-core-libraries) is
   linked with the simulator.
@@ -1205,6 +1179,9 @@ add_simulator(3b2
   - `FEATURE_VIDEO`: Simulator video support.
   - `FEATURE_DISPLAY`: Video display support.
 
+- Package family name: The `PKG_FAMILY` option adds the simulator to a package
+  "family" or simulator packaging group, e.g., "DEC PDP simulators".
+
 - `BUILDROMS` option keyword: If the simulator has a boot ROM header file that
   is maintained or generated by `BuildROMS`, add this keyword to the
   `add_simulator` function call.
@@ -1213,9 +1190,9 @@ add_simulator(3b2
 ### Simulator "core" libraries
 
 The `CMake` build infrastructure avoids repeatedly compiling the simulator
-"core" source code with each simulator. Instead, a simulator "links" with one of
-six (6) static libraries that represents the combination of required features:
-32/64 bit support and video:
+"core" source code. Instead, a simulator "links" with one of six (6) static
+libraries that represents the combination of required features: 32/64 bit
+support and video:
 
 | Library          | Video | Integer size | Address size | `add_simulator` flags |
 | :--------------- | :---: | -----------: | -----------: | :-------------------- |
@@ -1231,9 +1208,9 @@ are added to a simulator's executable via `target_link_libraries`, the simulator
 inherits the public compile and linker flags from the interface library. Thus, each
 core library provides a consistent set of preprocessor definitions, header file
 directories, linker options, compiler flags appropriate to the desired simulator
-support features.
+support features for network, video and regular expressions.
 
-### `add_simulator` Reference
+## `add_simulator` Reference
 
 ```cmake
 add_simulator(simulator_name
@@ -1273,15 +1250,14 @@ add_simulator(simulator_name
     ## PDP-10)
     LABEL 3B2
 
-    ## Test script prefix name
+    ## [sim] prefix for the simulator's "tests/[sim]_diag.ini" script
     TEST 3b2)
 ```
 
-`add_simulator` takes care of defining a `CMake` target, which can be referenced
+`add_simulator` defines a `CMake` executable target, which can be referenced
 via the `simulator_name`. This can be useful if you need to add specific linker
 flags, such as increasing the default thread stack size. The IBM 650 simulator
-has example code that increases the thread stack size on Windows (note that you
-need to be proficient with `CMake` because you need to write `CMake` code):
+has example code that increases the thread stack size on Windows:
 
 ```cmake
 add_simulator(i650
@@ -1345,7 +1321,7 @@ endif()
 5. Reconfigure your build. Refer to the [CMake command line](#cmake-command-line)
    section.
 
-6. Build and develop as needed.
+6. Build and develop.
 
 ### Regenerating `CMakeLists.txt` from the `makefile`
 

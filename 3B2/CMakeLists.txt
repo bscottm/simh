@@ -39,6 +39,7 @@ add_simulator(3b2
         REV2
     FEATURE_FULL64
     LABEL 3B2
+    PKG_FAMILY att3b2_family
     TEST 3b2)
 
 add_simulator(3b2-700
@@ -65,4 +66,5 @@ add_simulator(3b2-700
         REV3
     FEATURE_FULL64
     LABEL 3B2
+    PKG_FAMILY att3b2_family
     TEST 3b2-700)
