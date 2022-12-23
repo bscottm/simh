@@ -107,7 +107,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: simh-4.0.0-win32-vs2022xp
-          path: cmake/build-vs2022-xp/simh-4.0.0-win32-vs2022xp.zip
+          path: cmake/build-vs2022-xp/simh-4.0.0-win32-Release-vs2022xp.zip
 
   cmake-vs2022:
     name: VS 2022 Win10 native VCPKG
