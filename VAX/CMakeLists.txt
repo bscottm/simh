@@ -722,3 +722,6 @@ add_simulator(vaxstation4000vlc
     BUILDROMS
     LABEL VAX
     TEST vax-diag)
+
+install(TARGETS vax COMPONENT vaxen_family)
+install(TARGETS vaxstation4000m60 COMPONENT vaxen_family)

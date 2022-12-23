@@ -231,7 +231,9 @@ function (add_simulator _targ)
     cmake_parse_arguments(SIMH "${ADD_SIMULATOR_OPTIONS}" "${ADD_SIMULATOR_1ARG}" "${ADD_SIMULATOR_NARG}" ${ARGN})
 
     ## Standard install:
-    install(TARGETS ${_targ} RUNTIME)
+    install(TARGETS ${_targ}
+        RUNTIME
+        COMPONENT simh_suite)
 
     ## Simulator-specific tests:
     list(APPEND test_cmd "${_targ}" "RegisterSanityCheck")

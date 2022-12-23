@@ -17,6 +17,7 @@ set(CPACK_PACKAGE_VENDOR "The Open-SIMH project")
 if (SIMH_BUILD_SUFFIX)
     set(buildSuffix ${SIMH_BUILD_SUFFIX})
 else ()
+    message(STATUS "No SIMH_BUILD_SUFFIX supplied, creating default.")
     set(buildSuffix "")
     if (WIN32)
         if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -55,7 +56,25 @@ string(JOIN "-" CPACK_PACKAGE_FILE_NAME
 message(STATUS "CPack output file name: ${CPACK_PACKAGE_FILE_NAME}")
 unset(buildSuffix)
 
+## When applicable (e.g., NSIS Windows), install under the SIMH-x.y directory:
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "SIMH-${SIMH_VERSION_MAJOR}.${SIMH_VERSION_MINOR}")
+## License file:
+set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE.txt)
+
+set(CPACK_PACKAGE_CONTACT     "open-simh@nowhere.org")
+set(CPACK_PACKAGE_MAINTAINER "open-simh@nowhere.org")
+
+include(CPack)
+
 ## CPack generator-specific configs:
+
+##+
+## NSIS Windows installer.
+##-
+set(CPACK_NSIS_PACKAGE_NAME ${CPACK_PACKAGE_INSTALL_DIRECTORY})
+configure_file(${CMAKE_SOURCE_DIR}/cmake/installers/NSIS.template.in
+    ${CMAKE_BINARY_DIR}/NSIS.template
+    @ONLY)
 
 ##+
 ## Debian:
@@ -69,7 +88,7 @@ list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS
     libedit
 )
 
-set(CPACK_PACKAGE_CONTACT     "open-simh@nowhere.org")
-set(CPACK_PACKAGE_MAINTAINER "open-simh@nowhere.org")
 
-include(CPack)
+## Simulator component groups
+cpack_add_component(simh_suite DISPLAY_NAME "SIMH simulators")
+cpack_add_component(vaxen_family DISPLAY_NAME "VAX family simulators")

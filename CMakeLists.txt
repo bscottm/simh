@@ -15,7 +15,9 @@ if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif ()
 
 # Places to look for CMake modules/includes
-set(SIMH_INCLUDE_PATH_LIST ${CMAKE_SOURCE_DIR}/cmake)
+set(SIMH_INCLUDE_PATH_LIST
+    ${CMAKE_SOURCE_DIR}/cmake
+    ${CMAKE_SOURCE_DIR}/cmake/installers)
 list(APPEND CMAKE_MODULE_PATH ${SIMH_INCLUDE_PATH_LIST})
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
@@ -57,7 +59,12 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.15)
     cmake_policy(SET CMP0091 NEW)
 endif()
 
-set(SIMH_VERSION "4.0.0")
+## SIMH Version variables:
+set(SIMH_VERSION_MAJOR 4)
+set(SIMH_VERSION_MINOR 0)
+set(SIMH_VERSION_PATCH 0)
+set(SIMH_VERSION "${SIMH_VERSION_MAJOR}.${SIMH_VERSION_MINOR}.${SIMH_VERSION_PATCH}")
+
 project(simh VERSION "${SIMH_VERSION}" LANGUAGES C CXX)
 
 include(vcpkg-setup)
@@ -401,7 +408,6 @@ else ()
 endif ()
 
 if (NOT DO_DEPENDENCY_BUILD)
-    include(cpack-setup)
     include (add_simulator)
     if (WITH_SLIRP)
       add_subdirectory(slirp)
@@ -441,6 +447,8 @@ if (NOT DO_DEPENDENCY_BUILD)
 
     message(STATUS "Adding simulators")
     include(simh-simulators)
+
+    include(cpack-setup)
 else ()
     message(STATUS "")
     message(STATUS "Building the following dependency libraries:")
