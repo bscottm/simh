@@ -142,6 +142,7 @@ add_simulator(infoserver100
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(infoserver1000
@@ -170,6 +171,7 @@ add_simulator(infoserver1000
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(infoserver150vxt
@@ -186,6 +188,7 @@ add_simulator(infoserver150vxt
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax1
@@ -229,6 +232,7 @@ add_simulator(microvax1
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax2
@@ -244,6 +248,7 @@ add_simulator(microvax2
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax2000
@@ -280,6 +285,7 @@ add_simulator(microvax2000
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax3100
@@ -296,6 +302,7 @@ add_simulator(microvax3100
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax3100e
@@ -312,6 +319,7 @@ add_simulator(microvax3100e
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(microvax3100m80
@@ -326,6 +334,7 @@ add_simulator(microvax3100m80
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(rtvax1000
@@ -340,6 +349,7 @@ add_simulator(rtvax1000
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax
@@ -354,6 +364,7 @@ add_simulator(vax
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 set(vax_binary_dir ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
@@ -435,6 +446,7 @@ add_simulator(vax730
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax750
@@ -483,6 +495,7 @@ add_simulator(vax750
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax780
@@ -532,6 +545,7 @@ add_simulator(vax780
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax8200
@@ -579,6 +593,7 @@ add_simulator(vax8200
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vax8600
@@ -627,6 +642,7 @@ add_simulator(vax8600
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation3100m30
@@ -643,6 +659,7 @@ add_simulator(vaxstation3100m30
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation3100m38
@@ -659,6 +676,7 @@ add_simulator(vaxstation3100m38
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation3100m76
@@ -693,6 +711,7 @@ add_simulator(vaxstation3100m76
     FEATURE_VIDEO
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation4000m60
@@ -707,6 +726,7 @@ add_simulator(vaxstation4000m60
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
 
 add_simulator(vaxstation4000vlc
@@ -721,7 +741,5 @@ add_simulator(vaxstation4000vlc
     FEATURE_FULL64
     BUILDROMS
     LABEL VAX
+    PKG_FAMILY vax_family
     TEST vax-diag)
-
-install(TARGETS vax COMPONENT vaxen_family)
-install(TARGETS vaxstation4000m60 COMPONENT vaxen_family)

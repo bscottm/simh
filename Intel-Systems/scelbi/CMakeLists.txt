@@ -22,4 +22,5 @@ add_simulator(scelbi
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL Intel-Systems
+    PKG_FAMILY simh_suite
     TEST scelbi)

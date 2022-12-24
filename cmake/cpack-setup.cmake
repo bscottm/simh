@@ -76,6 +76,14 @@ configure_file(${CMAKE_SOURCE_DIR}/cmake/installers/NSIS.template.in
     ${CMAKE_BINARY_DIR}/NSIS.template
     @ONLY)
 
+###+
+### WIX MSI Windows installer.
+###
+###
+### Upgrade GUID shouldn't really change.
+###-
+set(CPACK_WIX_UPGRADE_GUID "ed5dba4c-7c9e-4af8-ac36-37e14c637696")
+
 ##+
 ## Debian:
 ##-
@@ -87,8 +95,3 @@ list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS
     libvdeplug
     libedit
 )
-
-
-## Simulator component groups
-cpack_add_component(simh_suite DISPLAY_NAME "SIMH simulators")
-cpack_add_component(vaxen_family DISPLAY_NAME "VAX family simulators")

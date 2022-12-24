@@ -27,4 +27,5 @@ add_simulator(i1620
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL I1620
+    PKG_FAMILY simh_suite
     TEST i1620)

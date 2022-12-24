@@ -21,4 +21,5 @@ add_simulator(ssem
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL SSEM
+    PKG_FAMILY simh_suite
     TEST ssem)

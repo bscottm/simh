@@ -30,4 +30,5 @@ add_simulator(b5500
         B5500
     FEATURE_INT64
     LABEL B5500
+    PKG_FAMILY simh_suite
     TEST b5500)

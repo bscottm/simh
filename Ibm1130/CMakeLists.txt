@@ -32,6 +32,7 @@ add_simulator(ibm1130
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL Ibm1130
+    PKG_FAMILY simh_suite
     TEST ibm1130)
 
 if (WIN32)

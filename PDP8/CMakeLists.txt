@@ -37,4 +37,5 @@ add_simulator(pdp8
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL PDP8
+    PKG_FAMILY simh_suite
     TEST pdp8)

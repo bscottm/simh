@@ -31,6 +31,7 @@ add_simulator(i701
         I701
     FEATURE_INT64
     LABEL I7000
+    PKG_FAMILY simh_suite
     TEST i701)
 
 add_simulator(i7010
@@ -53,6 +54,7 @@ add_simulator(i7010
     DEFINES
         I7010
     LABEL I7000
+    PKG_FAMILY simh_suite
     TEST i7010)
 
 add_simulator(i704
@@ -72,6 +74,7 @@ add_simulator(i704
         I704
     FEATURE_INT64
     LABEL I7000
+    PKG_FAMILY simh_suite
     TEST i704)
 
 add_simulator(i7070
@@ -95,6 +98,7 @@ add_simulator(i7070
         I7070
     FEATURE_INT64
     LABEL I7000
+    PKG_FAMILY simh_suite
     TEST i7070)
 
 add_simulator(i7080
@@ -118,6 +122,7 @@ add_simulator(i7080
     DEFINES
         I7080
     LABEL I7000
+    PKG_FAMILY simh_suite
     TEST i7080)
 
 add_simulator(i7090
@@ -142,4 +147,5 @@ add_simulator(i7090
         I7090
     FEATURE_INT64
     LABEL I7000
+    PKG_FAMILY simh_suite
     TEST i7090)

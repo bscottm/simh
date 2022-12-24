@@ -30,4 +30,5 @@ add_simulator(alpha
         ${CMAKE_CURRENT_SOURCE_DIR}
     FEATURE_FULL64
     LABEL alpha
+    PKG_FAMILY experimental
     TEST alpha)

@@ -26,6 +26,7 @@ add_simulator(i650
         ${CMAKE_CURRENT_SOURCE_DIR}
     FEATURE_INT64
     LABEL I650
+    PKG_FAMILY simh_suite
     TEST i650)
 
 if (WIN32)

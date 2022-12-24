@@ -33,4 +33,5 @@ add_simulator(pdp1
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL PDP1
+    PKG_FAMILY simh_suite
     TEST pdp1)

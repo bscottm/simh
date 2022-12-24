@@ -75,6 +75,7 @@ add_simulator(pdp11
     FEATURE_DISPLAY
     BUILDROMS
     LABEL PDP11
+    PKG_FAMILY pdp11_family
     TEST pdp11)
 
 add_simulator(uc15
@@ -99,4 +100,5 @@ add_simulator(uc15
         VM_PDP11
         UC15
     LABEL PDP11
+    PKG_FAMILY pdp11_family
     TEST uc15)

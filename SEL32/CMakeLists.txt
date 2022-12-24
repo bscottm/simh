@@ -38,4 +38,5 @@ add_simulator(sel32
         USE_INT32
         SEL32
     LABEL SEL32
+    PKG_FAMILY simh_suite
     TEST sel32)

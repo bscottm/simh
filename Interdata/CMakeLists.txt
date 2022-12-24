@@ -34,6 +34,7 @@ add_simulator(id16
     INCLUDES
         ${ID16D}
     LABEL Interdata
+    PKG_FAMILY simh_suite
     TEST id16)
 
 add_simulator(id32
@@ -56,4 +57,5 @@ add_simulator(id32
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL Interdata
+    PKG_FAMILY simh_suite
     TEST id32)

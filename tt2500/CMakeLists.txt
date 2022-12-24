@@ -29,4 +29,5 @@ add_simulator(tt2500
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL tt2500
+    PKG_FAMILY simh_suite
     TEST tt2500)

@@ -26,4 +26,5 @@ add_simulator(i1401
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL I1401
+    PKG_FAMILY simh_suite
     TEST i1401)

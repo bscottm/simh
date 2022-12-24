@@ -23,4 +23,5 @@ add_simulator(altair
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL ALTAIR
+    PKG_FAMILY simh_suite
     TEST altair)

@@ -30,6 +30,7 @@ add_simulator(swtp6800mp-a
         ${CMAKE_CURRENT_SOURCE_DIR}
     BUILDROMS
     LABEL swtp6800
+    PKG_FAMILY simh_suite
     TEST swtp6800mp-a)
 
 add_simulator(swtp6800mp-a2
@@ -49,4 +50,5 @@ add_simulator(swtp6800mp-a2
         ${CMAKE_CURRENT_SOURCE_DIR}
     BUILDROMS
     LABEL swtp6800
+    PKG_FAMILY simh_suite
     TEST swtp6800mp-a2)

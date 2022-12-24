@@ -2,6 +2,7 @@ import pprint
 
 import simgen.parse_makefile as SPM
 import simgen.utils as SU
+import simgen.packaging as SPKG
 
 class SIMHBasicSimulator:
     """
@@ -94,6 +95,10 @@ class SIMHBasicSimulator:
         indent4 = ' ' * (indent + 4)
         indent8 = ' ' * (indent + 8)
 
+        pkg_info = SPKG.package_info.get(section_name)
+        install_flag = pkg_info.install_flag if pkg_info is not None else None
+        pkg_family = pkg_info.family.component_name if pkg_info is not None else None
+
         stream.write(' ' * indent + '{}({}\n'.format(section, section_name))
         stream.write(' ' * (indent + 4) + 'SOURCES\n')
         stream.write('\n'.join(map(lambda src: indent8 + src, section_srcs)))
@@ -116,6 +121,11 @@ class SIMHBasicSimulator:
         if self.buildrom:
             stream.write('\n' + indent4 + "BUILDROMS")
         stream.write('\n' + indent4 + "LABEL " + test_label)
+        if install_flag:
+            if pkg_family:
+                stream.write('\n' + indent4 + "PKG_FAMILY " + pkg_family)
+        else:
+            stream.write('\n' + indent4 + "NO_INSTALL")
         stream.write('\n' + '\n'.join(additional_text))
         stream.write(')\n')
 

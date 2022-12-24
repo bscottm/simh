@@ -139,6 +139,7 @@ list(APPEND ADD_SIMULATOR_OPTIONS
     "BUILDROMS"
     "FEATURE_VIDEO"
     "FEATURE_DISPLAY"
+    "NO_INSTALL"
     "BESM6_SDL_HACK"
 )
 
@@ -146,9 +147,12 @@ list(APPEND ADD_SIMULATOR_OPTIONS
 ## LABEL: The test name label, used to group tests, e.g., "VAX" for all of the
 ##   VAX simulator tests. If you want to run a subset of tests, add the "-L <regexp>"
 ##   argument to the ctest command line.
+## PKG_FAMILY: The simulator family to which a simulator belongs. If not specificed,
+##   defaults to "simh_suite".
 list(APPEND ADD_SIMULATOR_1ARG
     "TEST"
     "LABEL"
+    "PKG_FAMILY"
 )
 
 ## DEFINES: List of extra command line manifest constants ("-D" items)
@@ -230,10 +234,12 @@ function (add_simulator _targ)
     simh_executable_template(${_targ} "${ARGN}")
     cmake_parse_arguments(SIMH "${ADD_SIMULATOR_OPTIONS}" "${ADD_SIMULATOR_1ARG}" "${ADD_SIMULATOR_NARG}" ${ARGN})
 
-    ## Standard install:
-    install(TARGETS ${_targ}
-        RUNTIME
-        COMPONENT simh_suite)
+    set(pkg_family "simh_suite")
+    if (SIMH_PKG_FAMILY)
+        set(pkg_family ${SIMH_PKG_FAMILY})
+    endif ()
+
+    install(TARGETS ${_targ} RUNTIME COMPONENT ${pkg_family})
 
     ## Simulator-specific tests:
     list(APPEND test_cmd "${_targ}" "RegisterSanityCheck")

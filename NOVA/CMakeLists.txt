@@ -34,6 +34,7 @@ add_simulator(eclipse
         ECLIPSE
     FEATURE_INT64
     LABEL NOVA
+    PKG_FAMILY simh_suite
     TEST eclipse)
 
 add_simulator(nova
@@ -53,4 +54,5 @@ add_simulator(nova
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL NOVA
+    PKG_FAMILY simh_suite
     TEST nova)
