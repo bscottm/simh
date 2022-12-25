@@ -1,158 +1,21 @@
 name: Build
 
-on: [pull_request, push]
+on:
+  pull_request:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '!v[0-9].[0-9]+.[0-9]+'
+      - '!v[0-9].[0-9]+.[0-9]+-*'
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  cmake-unix:
-    name: CMake Ubuntu
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sh -ex .travis/deps.sh linux
-          sudo apt install -ym ninja-build
-      - name: cmake-builder.sh
-        run: |
-          cmake/cmake-builder.sh --config Release --flavor ninja --lto --notest --noinstall --parallel --verbose
-      - name: SIMH simulator suite test
-        run: |
-          cmake/cmake-builder.sh --config Release --flavor ninja --testonly
-
-  cmake-macosx:
-    name: CMake Mac OSX
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-12]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sh -ex .travis/deps.sh osx
-      - name: cmake-builder.sh
-        run: |
-          cmake/cmake-builder.sh --config Release --flavor xcode --lto --notest --noinstall
-      - name: SIMH simulator suite test
-        run: |
-          cmake/cmake-builder.sh --config Release --flavor xcode --testonly
-
-  cmake-vs2022xp:
-    name: VS 2022 XP-compatible LEGACY
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [windows-latest]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      ## NOTE: This will have to change when Github updates the windows-latest
-      ## image AND when Microsoft bumps the Visual Studio year.
-      ##
-      ## Things that need updating:
-      ## - Product ID (maybe: MS seems to be very consistent with the component
-      ##   name, hasn't changed since VS 2019.)
-      ## - Channel ID
-
-      - name: Install v141_xp (XP toolkit)
-        shell: pwsh
-        run: |
-            $ErrorActionPreference = "Stop"
-            $packageParams = @( "--productId", "Microsoft.VisualStudio.Product.Enterprise", 
-                "--channelId", "VisualStudio.17.Release",
-                "--add", "Microsoft.VisualStudio.Component.VC.v141.x86.x64",
-                "--add", "Microsoft.VisualStudio.Component.WinXP",
-                "--no-includeRecommended",
-                "--includeOptional",
-                "--quiet",
-                "--locale en-US" ) -join " "
-            choco install visualstudio2022-workload-nativedesktop --package-parameters $packageParams
-
-      - name: vs2022-xp build
-        shell: pwsh
-        run: |
-            $ErrorActionPreference = "Stop"
-            $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
-            Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-            Update-SessionEnvironment
-            # Fix PATH so that "C:\Strawberry" (Strawberry Perl) doesn't mess with the build
-            # CMake WILL find incompatible libraries within Strawberry.
-            $fixPATH = $env:Path
-            foreach ($path in ${fixPATH}.Split(";")) {
-                if ($path -like "*\Strawberry\*" -or $path -like "*/Strawberry/*") {
-                    $fixPATH = $fixPATH.Replace($path ,"")
-                }
-            }
-            $env:Path = $fixPATH
-            ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -clean -lto -verbose -notest -noinstall
-      - name: SIMH simulator suite test
-        shell: pwsh
-        run: |
-            ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -testOnly
-      - name: SIMH simulator suite install and package
-        shell: pwsh
-        run: |
-            ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -installOnly
-            ./cmake/cmake-builder.ps1 -flavor vs2022-xp -config Release -package
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: simh-4.0.0-win32-vs2022xp
-          path: cmake/build-vs2022-xp/simh-4.0.0-win32-Release-vs2022xp.zip
-
-  cmake-vs2022:
-    name: VS 2022 Win10 native VCPKG
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [windows-latest]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: vs2022 build
-        shell: pwsh
-        run: |
-            $ErrorActionPreference = "Stop"
-            # Fix PATH so that "C:\Strawberry" (Strawberry Perl) doesn't mess with the build
-            # CMake WILL find incompatible libraries within Strawberry.
-            $fixPATH = $env:Path
-            foreach ($path in ${fixPATH}.Split(";")) {
-                if ($path -like "*\Strawberry\*" -or $path -like "*/Strawberry/*") {
-                    $fixPATH = $fixPATH.Replace($path, "")
-                }
-            }
-            $env:Path = $fixPATH
-            # Make this a vcpkg build:
-            $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
-            Push-Location $env:VCPKG_ROOT
-            git pull
-            Pop-Location
-            ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -clean -lto -verbose -notest -noinstall
-      - name: SIMH simulator suite test
-        shell: pwsh
-        run: |
-            ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -testOnly
-      - name: SIMH simulator suite install and package
-        shell: pwsh
-        run: |
-            ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -installOnly
-            ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -package
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: simh-4.0.0-win32-vs2022
-          path: cmake/build-vs2022/simh-4.0.0-win32-Release-vs2022.zip
+  cmake-builds:
+    uses: ./.github/workflows/cmake-builds.yml
 
   makefile:
     runs-on: ${{ matrix.os }}

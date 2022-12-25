@@ -65,6 +65,7 @@ installOnly=
 verboseMode=
 buildTarget=
 packaging=
+cpack_suffix=
 
 ## CMake supports "-S" flag (implies -B works as well.) Otherwise, it's
 ## the older invocation command line.
@@ -145,7 +146,7 @@ if [[ "x${MSYSTEM}" != x ]]; then
 fi
 
 longopts=clean,help,flavor:,config:,nonetwork,novideo,notest,parallel,generate,testonly,regenerate
-longopts=${longopts},noinstall,installonly,verbose,target:,package,lto,debugWall
+longopts=${longopts},noinstall,installonly,verbose,target:,package,lto,debugWall,cpack_suffix:
 
 ARGS=$(${getopt_prog} --longoptions $longopts --options xhf:cpg -- "$@")
 if [ $? -ne 0 ] ; then
@@ -222,6 +223,10 @@ while true; do
         --debugWall)
             generateArgs="${generateArgs} -DDEBUG_WALL:Bool=On"
             shift
+            ;;
+        --cpack_suffix)
+            generateArgs="${generateArgs} -DSIMH_PACKAGE_SUFFIX=$2"
+            shift 2
             ;;
         -p | --parallel)
             buildParallel=yes

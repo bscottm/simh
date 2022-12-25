@@ -60,68 +60,131 @@ experimental_family = PkgFamily("experimental", "Experimental (work-in-progress)
     """Experimental or work-in-progress simulators not in the SIMH mainline simulator suite."""
 )
 
+altairz80_family = PkgFamily("altairz80_family", "Altair Z80 simulator",
+    """The Altair Z80 simulator with M68000 support."""
+)
+
+b5500_family = PkgFamily("b5500_family", "Burroughs 5500",
+    """The Burroughs 5500 system simulator""")
+
+cdc1700_family = PkgFamily("cdc1700_family", "CDC 1700",
+    """The Control Data Corporation's CDC-1700 system simulator"""
+)
+
+dgnova_family = PkgFamily("dgnova_family", "DG Nova and Eclipse",
+    """Data General NOVA and Eclipse system simulators"""
+)
+
+grisys_family = PkgFamily("grisys_family", "GRI Systems GRI-909",
+    """GRI Systems GRI-909 system simulator"""
+)
+
+honeywell_family = PkgFamily("honeywell_family", "Honeywell H316",
+    """Honeywell H-316 system simulator"""
+)
+
+hp_family = PkgFamily("hp_family", "HP 2100, 3000",
+    """Hewlett-Packard H2100 and H3000 simulators""")
+
+ibm_family = PkgFamily("ibm_family", "IBM",
+    """IBM system simulators: i650"""
+)
+
+imlac_family = PkgFamily("imlac_family", "IMLAC",
+    """IMLAC system simulators"""
+)
+
+intel_family = PkgFamily("intel_family", "Intel",
+    """Intel system simulators"""
+)
+
+interdata_family = PkgFamily("interdata_family", "Interdata",
+    """Interdata systems simulators: id16, id32"""
+)
+
+lgp_family = PkgFamily("lgp_family", "LGP",
+    """Librascope systems simulators"""
+)
+
+decpdp_family = PkgFamily("decpdp_family", "DEC PDP family",
+    """Digital Equipment Corporation PDP system simulators"""
+)
+
+sds_family = PkgFamily("sds_family", "SDS simulators",
+    """Scientific Data Systems (SDS) system simulators"""
+)
+
+gould_family = PkgFamily("gould_family", "Gould simulators",
+    """Gould Systems simulators"""
+)
+
+swtp_family = PkgFamily("swtp_family", "SWTP simulators",
+    """Southwest Technical Products (SWTP) system simulators"""
+)
+
+
 package_info = {
     "3b2": SIMHPackaging(att3b2_family),
     "3b2-700": SIMHPackaging(att3b2_family),
     "altair": SIMHPackaging(default_family),
-    "altairz80": SIMHPackaging(default_family),
-    "b5500": SIMHPackaging(default_family),
+    "altairz80": SIMHPackaging(altairz80_family),
+    "b5500": SIMHPackaging(b5500_family),
     "besm6": SIMHPackaging(default_family),
-    "cdc1700": SIMHPackaging(default_family),
-    "eclipse": SIMHPackaging(default_family),
-    "gri": SIMHPackaging(default_family),
-    "h316": SIMHPackaging(default_family),
-    "hp2100": SIMHPackaging(default_family),
-    "hp3000": SIMHPackaging(default_family),
-    "i1401": SIMHPackaging(default_family),
-    "i1620": SIMHPackaging(default_family),
-    "i650": SIMHPackaging(default_family),
-    "i701": SIMHPackaging(default_family),
-    "i7010": SIMHPackaging(default_family),
-    "i704": SIMHPackaging(default_family),
-    "i7070": SIMHPackaging(default_family),
-    "i7080": SIMHPackaging(default_family),
-    "i7090": SIMHPackaging(default_family),
-    "i7094": SIMHPackaging(default_family),
-    "ibm1130": SIMHPackaging(default_family),
-    "id16": SIMHPackaging(default_family),
-    "id32": SIMHPackaging(default_family),
-    "imlac": SIMHPackaging(default_family),
+    "cdc1700": SIMHPackaging(cdc1700_family),
+    "eclipse": SIMHPackaging(dgnova_family),
+    "gri": SIMHPackaging(grisys_family),
+    "h316": SIMHPackaging(honeywell_family),
+    "hp2100": SIMHPackaging(hp_family),
+    "hp3000": SIMHPackaging(hp_family),
+    "i1401": SIMHPackaging(ibm_family),
+    "i1620": SIMHPackaging(ibm_family),
+    "i650": SIMHPackaging(ibm_family),
+    "i701": SIMHPackaging(ibm_family),
+    "i7010": SIMHPackaging(ibm_family),
+    "i704": SIMHPackaging(ibm_family),
+    "i7070": SIMHPackaging(ibm_family),
+    "i7080": SIMHPackaging(ibm_family),
+    "i7090": SIMHPackaging(ibm_family),
+    "i7094": SIMHPackaging(ibm_family),
+    "ibm1130": SIMHPackaging(ibm_family),
+    "id16": SIMHPackaging(interdata_family),
+    "id32": SIMHPackaging(interdata_family),
+    "imlac": SIMHPackaging(imlac_family),
     "infoserver100": SIMHPackaging(vax_family),
     "infoserver1000": SIMHPackaging(vax_family),
     "infoserver150vxt": SIMHPackaging(vax_family),
-    "intel-mds": SIMHPackaging(default_family),
-    "lgp": SIMHPackaging(default_family),
+    "intel-mds": SIMHPackaging(intel_family),
+    "lgp": SIMHPackaging(lgp_family),
     "microvax1": SIMHPackaging(vax_family),
     "microvax2": SIMHPackaging(vax_family),
     "microvax2000": SIMHPackaging(vax_family),
     "microvax3100": SIMHPackaging(vax_family),
     "microvax3100e": SIMHPackaging(vax_family),
     "microvax3100m80": SIMHPackaging(vax_family),
-    "nova": SIMHPackaging(default_family),
-    "pdp1": SIMHPackaging(default_family),
+    "nova": SIMHPackaging(dgnova_family),
+    "pdp1": SIMHPackaging(decpdp_family),
     ## Don't install pdp10 per Rob Cromwell
-    "pdp10": SIMHPackaging(pdp10_family, False),
+    "pdp10": SIMHPackaging(pdp10_family, install_flag=False),
     "pdp10-ka": SIMHPackaging(pdp10_family),
     "pdp10-ki": SIMHPackaging(pdp10_family),
     "pdp10-kl": SIMHPackaging(pdp10_family),
     "pdp10-ks": SIMHPackaging(pdp10_family),
     "pdp11": SIMHPackaging(pdp11_family),
-    "pdp15": SIMHPackaging(default_family),
-    "pdp4": SIMHPackaging(default_family),
-    "pdp6": SIMHPackaging(default_family),
-    "pdp7": SIMHPackaging(default_family),
+    "pdp15": SIMHPackaging(decpdp_family),
+    "pdp4": SIMHPackaging(decpdp_family),
+    "pdp6": SIMHPackaging(decpdp_family),
+    "pdp7": SIMHPackaging(decpdp_family),
     "pdp8": SIMHPackaging(default_family),
-    "pdp9": SIMHPackaging(default_family),
+    "pdp9": SIMHPackaging(decpdp_family),
     "rtvax1000": SIMHPackaging(vax_family),
-    "s3": SIMHPackaging(default_family),
-    "scelbi": SIMHPackaging(default_family),
-    "sds": SIMHPackaging(default_family),
-    "sel32": SIMHPackaging(default_family),
-    "sigma": SIMHPackaging(default_family),
+    "s3": SIMHPackaging(ibm_family),
+    "scelbi": SIMHPackaging(intel_family),
+    "sds": SIMHPackaging(sds_family),
+    "sel32": SIMHPackaging(gould_family),
+    "sigma": SIMHPackaging(sds_family),
     "ssem": SIMHPackaging(default_family),
-    "swtp6800mp-a": SIMHPackaging(default_family),
-    "swtp6800mp-a2": SIMHPackaging(default_family),
+    "swtp6800mp-a": SIMHPackaging(swtp_family),
+    "swtp6800mp-a2": SIMHPackaging(swtp_family),
     "tt2500": SIMHPackaging(default_family),
     "tx-0": SIMHPackaging(default_family),
     "uc15": SIMHPackaging(pdp11_family),

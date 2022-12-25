@@ -22,5 +22,5 @@ add_simulator(gri
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL GRI
-    PKG_FAMILY simh_suite
+    PKG_FAMILY grisys_family
     TEST gri)

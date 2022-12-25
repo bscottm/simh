@@ -36,5 +36,5 @@ add_simulator(hp3000
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL HP3000
-    PKG_FAMILY simh_suite
+    PKG_FAMILY hp_family
     TEST hp3000)

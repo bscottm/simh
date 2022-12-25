@@ -227,5 +227,5 @@ add_simulator(pdp6
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL PDP10
-    PKG_FAMILY simh_suite
+    PKG_FAMILY decpdp_family
     TEST pdp6)

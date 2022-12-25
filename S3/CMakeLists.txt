@@ -25,5 +25,5 @@ add_simulator(s3
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL S3
-    PKG_FAMILY simh_suite
+    PKG_FAMILY ibm_family
     TEST s3)

@@ -14,10 +14,10 @@ endif ()
 # how to assemble it into a package file.
 set(CPACK_PACKAGE_VENDOR "The Open-SIMH project")
 
-if (SIMH_BUILD_SUFFIX)
-    set(buildSuffix ${SIMH_BUILD_SUFFIX})
+if (SIMH_PACKAGE_SUFFIX)
+    set(buildSuffix "${SIMH_PACKAGE_SUFFIX}")
 else ()
-    message(STATUS "No SIMH_BUILD_SUFFIX supplied, creating default.")
+    message(STATUS "No SIMH_PACKAGE_SUFFIX supplied, manufacturing a default.")
     set(buildSuffix "")
     if (WIN32)
         if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -64,8 +64,6 @@ set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE.txt)
 set(CPACK_PACKAGE_CONTACT     "open-simh@nowhere.org")
 set(CPACK_PACKAGE_MAINTAINER "open-simh@nowhere.org")
 
-include(CPack)
-
 ## CPack generator-specific configs:
 
 ##+
@@ -95,3 +93,6 @@ list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS
     libvdeplug
     libedit
 )
+
+
+include(CPack)

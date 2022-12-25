@@ -32,5 +32,5 @@ add_simulator(i7094
         ${CMAKE_CURRENT_SOURCE_DIR}
     FEATURE_INT64
     LABEL I7094
-    PKG_FAMILY simh_suite
+    PKG_FAMILY ibm_family
     TEST i7094)

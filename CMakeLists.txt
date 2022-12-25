@@ -193,6 +193,9 @@ option(RELEASE_LTO
 option(DEBUG_WALL
        "Turn on maximal compiler warnings in Debug builds (e.g., \"-Wall\" or \"/W4\")"
        FALSE)
+option(SIMH_PACKAGE_SUFFIX
+       "Use -DSIMH_PACKAGE_SUFFIX as the packaging suffix for CPack artifacts."
+       "")
 
 # Places where CMake should look for dependent package configuration fragments and artifacts:
 set(SIMH_PREFIX_PATH_LIST)

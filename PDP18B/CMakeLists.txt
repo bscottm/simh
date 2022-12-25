@@ -40,7 +40,7 @@ add_simulator(pdp15
     DEFINES
         PDP15
     LABEL PDP18B
-    PKG_FAMILY simh_suite
+    PKG_FAMILY decpdp_family
     TEST pdp15)
 
 add_simulator(pdp4
@@ -51,7 +51,7 @@ add_simulator(pdp4
     DEFINES
         PDP4
     LABEL PDP18B
-    PKG_FAMILY simh_suite
+    PKG_FAMILY decpdp_family
     TEST pdp4)
 
 add_simulator(pdp7
@@ -68,7 +68,7 @@ add_simulator(pdp7
     FEATURE_VIDEO
     FEATURE_DISPLAY
     LABEL PDP18B
-    PKG_FAMILY simh_suite
+    PKG_FAMILY decpdp_family
     TEST pdp7)
 
 add_simulator(pdp9
@@ -79,5 +79,5 @@ add_simulator(pdp9
     DEFINES
         PDP9
     LABEL PDP18B
-    PKG_FAMILY simh_suite
+    PKG_FAMILY decpdp_family
     TEST pdp9)

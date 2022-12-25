@@ -71,5 +71,5 @@ add_simulator(altairz80
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL AltairZ80
-    PKG_FAMILY simh_suite
+    PKG_FAMILY altairz80_family
     TEST altairz80)

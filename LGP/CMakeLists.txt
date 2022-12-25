@@ -22,5 +22,5 @@ add_simulator(lgp
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}
     LABEL LGP
-    PKG_FAMILY simh_suite
+    PKG_FAMILY lgp_family
     TEST lgp)
