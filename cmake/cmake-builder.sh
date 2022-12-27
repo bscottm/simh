@@ -38,6 +38,10 @@ Options:
 --lto             Enable Link Time Optimization (LTO) in Release builds
 --debugWall       Enable maximal warnings in Debug builds
 
+--cpack_suffix    Specify CPack's packaging suffix, e.g., "ubuntu-22.04"
+                  to produce the "simh-4.0.0-ubuntu-22.04.deb" Debian
+                  package.
+
 --verbose         Turn on verbose build output
 
 --help (-h)       Print this help.

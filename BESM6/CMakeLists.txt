@@ -96,7 +96,7 @@ if (NOT (besm6_font AND WITH_VIDEO))
             ${CMAKE_CURRENT_SOURCE_DIR}
         FEATURE_INT64
         LABEL BESM6
-        PKG_FAMILY simh_suite
+        PKG_FAMILY default_family
         TEST besm6)
 else ()
     add_simulator(besm6
@@ -124,7 +124,7 @@ else ()
         FEATURE_DISPLAY
         BESM6_SDL_HACK
         LABEL BESM6
-        PKG_FAMILY simh_suite
+        PKG_FAMILY default_family
         TEST besm6)
 endif()
 unset(cand_fonts)

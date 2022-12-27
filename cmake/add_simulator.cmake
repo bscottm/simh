@@ -148,7 +148,7 @@ list(APPEND ADD_SIMULATOR_OPTIONS
 ##   VAX simulator tests. If you want to run a subset of tests, add the "-L <regexp>"
 ##   argument to the ctest command line.
 ## PKG_FAMILY: The simulator family to which a simulator belongs. If not specificed,
-##   defaults to "simh_suite".
+##   defaults to "default_family".
 list(APPEND ADD_SIMULATOR_1ARG
     "TEST"
     "LABEL"
@@ -234,7 +234,7 @@ function (add_simulator _targ)
     simh_executable_template(${_targ} "${ARGN}")
     cmake_parse_arguments(SIMH "${ADD_SIMULATOR_OPTIONS}" "${ADD_SIMULATOR_1ARG}" "${ADD_SIMULATOR_NARG}" ${ARGN})
 
-    set(pkg_family "simh_suite")
+    set(pkg_family "default_family")
     if (SIMH_PKG_FAMILY)
         set(pkg_family ${SIMH_PKG_FAMILY})
     endif ()
