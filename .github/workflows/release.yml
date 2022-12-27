@@ -26,6 +26,10 @@ jobs:
       - name: Show it!
         run: |
           ls -lR ~/staging/
+          echo "----"
+          pwd
+          echo "----"
+          ls -CF
       - name: Craft release
         uses: softprops/action-gh-release@v1
         with:
