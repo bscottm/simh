@@ -39,6 +39,12 @@ Options:
 --lto             Enable Link Time Optimization (LTO) in Release builds
 --debugWall       Enable maximal warnings in Debug builds
 --cppcheck        Enable cppcheck static code analysis rules
+--sanitizer       Enable a santizer. Only one sanitizer can be enabled at
+                  a time. Valid sanitizers are:
+                    address [ASan  -- address sanitizer]
+                    memory  [MSan  -- memory sanitizer]
+                    thread  [TSan  -- thread sanitizer]
+                    undef   [UBSan -- undefined behavior sanitizer]
 
 --cpack_suffix    Specify CPack's packaging suffix, e.g., "ubuntu-22.04"
                   to produce the "simh-4.1.0-ubuntu-22.04.deb" Debian
@@ -61,6 +67,7 @@ buildFlavor="Unix Makefiles"
 buildSubdir=build-unix
 buildConfig=Release
 testArgs=
+testTimeout=180
 notest=no
 buildParallel=no
 generateOnly=
@@ -70,6 +77,7 @@ installOnly=
 verboseMode=
 simTarget=
 cpack_suffix=
+sanitizer=
 
 ## CMake supports "-S" flag (implies -B works as well.) Otherwise, it's
 ## the older invocation command line.
@@ -152,6 +160,7 @@ fi
 
 longopts=clean,help,flavor:,config:,nonetwork,novideo,notest,parallel,generate,testonly
 longopts=${longopts},noinstall,installonly,verbose,target:,lto,debugWall,cppcheck,cpack_suffix:
+longopts=${longopts},sanitizer:
 
 ARGS=$(${getopt_prog} --longoptions $longopts --options xhf:c:pg -- "$@")
 if [ $? -ne 0 ] ; then
@@ -268,6 +277,20 @@ while true; do
             simTarget="${simTarget} $2"
             shift 2
             ;;
+        --sanitizer)
+            if [ x"${sanitizer}" != x ]; then
+                showHelp "Only one sanitizer can be enabled at a time, already using ${sanitizer}"
+            fi 
+            case $2 in
+            address|memory|thread|undef)
+                sanitizer=$2
+                ;;
+            *)
+                showHelp "Unknown sanitizer option: $2"
+                ;;
+            esac
+            shift 2
+            ;;
         --)
             ## End of options. we'll ignore.
             shift
@@ -275,6 +298,34 @@ while true; do
             ;;
     esac
 done
+
+## Sanitizer sanity check: Should only be enabled if the debug
+if [ x"${buildConfig}" = xDebug ]; then
+    if [ x"${sanitizer}" != x ]; then
+        ## Adjust the test timeout because the sanitizers have add'l
+        ## runtime overhead (at least 2x)
+        testTimeout=600
+    fi
+
+    case "${sanitizer}" in
+    address)
+        generateArgs="${generateArgs} -DSANITIZE_ADDRESS:Bool=On"
+        ;;
+    memory)
+        generateArgs="${generateArgs} -DSANITIZE_MEMORY:Bool=On"
+        ;;
+    thread)
+        generateArgs="${generateArgs} -DSANITIZE_THREAD:Bool=On"
+        ;;
+    undef)
+        generateArgs="${generateArgs} -DSANITIZE_UNDEFINED:Bool=On"
+        ;;
+    *)
+        ;;
+    esac
+else
+    echo "${scriptName}: !!! Sanitizer support only enabled for the Debug configuration. Ignored." >&2
+fi
 
 ## Determine the SIMH top-level source directory:
 simhTopDir=$(${dirname} $(${realpath} $0))
@@ -300,8 +351,8 @@ if [[ ! -d ${buildSubdir} ]]; then
     mkdir ${buildSubdir}
 fi
 
-## Setup test arguments (and add parallel later)
-testArgs="-C ${buildConfig} --timeout 180 --output-on-failure"
+## Setup test arguments (and add parallel later).
+testArgs="-C ${buildConfig} --timeout ${testTimeout} --output-on-failure"
 
 ## Parallel only applies to the unix flavor. GNU make will overwhelm your
 ## machine if the number of jobs isn't capped.
@@ -311,11 +362,11 @@ if [[ x"$canParallel" = xyes ]] ; then
           buildArgs="${buildArgs} --parallel"
 	  buildPostArgs="${buildPostArgs} -j 8"
 	}
-
-    # Don't execute ctest in parallel...
-    # [ x${canTestParallel} = xyes ] && {
-    #    testArgs="${testArgs} --parallel 4"
-    # }
+        ## Don't execute ctest in parallel... interleaved output and output
+        ## correlation is confusing.
+        # [ x${canTestParallel} = xyes ] && {
+        #    testArgs="${testArgs} --parallel 4"
+        # }
     fi
 else
     buildParallel=

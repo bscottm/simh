@@ -46,6 +46,7 @@ function(build_simcore _targ)
     cmake_parse_arguments(SIMH "VIDEO;INT64;ADDR64;BESM6_SDL_HACK" "" "" ${ARGN})
 
     add_library(${_targ} STATIC ${SIM_SOURCES})
+    add_sanitizers(${_targ})
 
     # Components that need to be turned on while building the library, but
     # don't export out to the dependencies (hence PRIVATE.)

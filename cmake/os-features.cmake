@@ -205,3 +205,5 @@ if (CYGWIN)
     target_compile_definitions(os_features INTERFACE HAVE_WINMM)
   endif ()
 endif ()
+
+find_package(Sanitizers)

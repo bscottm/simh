@@ -150,6 +150,10 @@ param (
     [Parameter(Mandatory=$false)]
     [switch] $lto            = $false,
 
+    ## Enable sanitizers
+    [Parameter(Mandatory=$false)]
+    [string] $sanitizer      = "",
+
     ## Turn on maximal compiler warnings for Debug builds (e.g. "-Wall" or "/W3")
     [Parameter(Mandatory=$false)]
     [switch] $debugWall      = $false,
@@ -426,6 +430,34 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     if (![String]::IsNullOrEmpty($cpack_suffix))
     {
         $generateArgs += @("-DSIMH_PACKAGE_SUFFIX:Bool=${cpack_suffix}")
+    }
+
+    ## Add sanitizer(s) for Debug builds
+    if (${config} -eq "Debug") {
+        foreach ($santhing in $sanitizer.Split(',')) {
+            switch -exact ($santhing)
+            {
+                "address" {
+                    $generateArgs += @("-DSANITIZE_ADDRESS:Bool=On")
+                }
+                "memory" {
+                    $generateArgs += @("-DSANITIZE_MEMORY:Bool=On")
+                }
+                "thread" {
+                    $generateArgs += @("-DSANITIZE_THREAD:Bool=On")
+                }
+                "undef" {
+                    $generateArgs += @("-DSANITIZE_UNDEFINED:Bool=On")
+                }
+                default {
+                    Write-Host "** Unknown sanitizer option: ${santhing}, ignoring"
+                }
+            }
+        }
+    } else {
+        if (![String]::IsNullOrEmpty(${sanitizer})) {
+            Write-Host "** Sanitizers ignored for ${config} (only Debug supported)"
+        }
     }
 
     $buildArgs     =  @("--build", "${buildDir}", "--config", "${config}")
