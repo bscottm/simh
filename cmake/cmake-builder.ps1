@@ -432,31 +432,16 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
         $generateArgs += @("-DSIMH_PACKAGE_SUFFIX:Bool=${cpack_suffix}")
     }
 
-    ## Add sanitizer(s) for Debug builds
-    if (${config} -eq "Debug") {
-        foreach ($santhing in $sanitizer.Split(',')) {
-            switch -exact ($santhing)
-            {
-                "address" {
-                    $generateArgs += @("-DSANITIZE_ADDRESS:Bool=On")
-                }
-                "memory" {
-                    $generateArgs += @("-DSANITIZE_MEMORY:Bool=On")
-                }
-                "thread" {
-                    $generateArgs += @("-DSANITIZE_THREAD:Bool=On")
-                }
-                "undef" {
-                    $generateArgs += @("-DSANITIZE_UNDEFINED:Bool=On")
-                }
-                default {
-                    Write-Host "** Unknown sanitizer option: ${santhing}, ignoring"
-                }
+    ## Add sanitizer(s)
+    foreach ($santhing in $sanitizer.Split(',')) {
+        switch -exact ($santhing)
+        {
+            "address" {
+                $generateArgs += @("-DSANITIZE_ADDRESS:Bool=On")
             }
-        }
-    } else {
-        if (![String]::IsNullOrEmpty(${sanitizer})) {
-            Write-Host "** Sanitizers ignored for ${config} (only Debug supported)"
+            default {
+                Write-Host "** Unknown sanitizer option: ${santhing}, ignoring"
+            }
         }
     }
 

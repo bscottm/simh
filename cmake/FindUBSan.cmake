@@ -29,6 +29,7 @@ set(FLAG_CANDIDATES
     # MSVC uses
     "/fsanitize=undefined"
     # GNU/Clang
+    "-g -fsanitize=undefined -fno-omit-frame-pointer -fPIE"
     "-g -fsanitize=undefined"
 )
 

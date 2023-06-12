@@ -206,4 +206,5 @@ if (CYGWIN)
   endif ()
 endif ()
 
+## Sanitizer support
 find_package(Sanitizers)

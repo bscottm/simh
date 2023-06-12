@@ -46,7 +46,6 @@ function(build_simcore _targ)
     cmake_parse_arguments(SIMH "VIDEO;INT64;ADDR64;BESM6_SDL_HACK" "" "" ${ARGN})
 
     add_library(${_targ} STATIC ${SIM_SOURCES})
-    add_sanitizers(${_targ})
 
     # Components that need to be turned on while building the library, but
     # don't export out to the dependencies (hence PRIVATE.)
@@ -59,6 +58,9 @@ function(build_simcore _targ)
 
     # Make sure that the top-level directory is part of the libary's include path:
     target_include_directories("${_targ}" PUBLIC "${CMAKE_SOURCE_DIR}")
+
+    # And optional sanitizers...
+    add_sanitizers(${_targ})
 
     if (SIMH_INT64)
         target_compile_definitions(${_targ} PUBLIC USE_INT64)
@@ -180,6 +182,7 @@ function (simh_executable_template _targ)
     )
     target_compile_options(${_targ} PRIVATE ${EXTRA_TARGET_CFLAGS})
     target_link_options(${_targ} PRIVATE ${EXTRA_TARGET_LFLAGS})
+    add_sanitizers(${_targ})
 
     if (MINGW)
         ## target_compile_options(${_targ} PUBLIC "-fms-extensions")

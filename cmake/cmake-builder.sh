@@ -299,33 +299,28 @@ while true; do
     esac
 done
 
-## Sanitizer sanity check: Should only be enabled if the debug
-if [ x"${buildConfig}" = xDebug ]; then
-    if [ x"${sanitizer}" != x ]; then
-        ## Adjust the test timeout because the sanitizers have add'l
-        ## runtime overhead (at least 2x)
-        testTimeout=600
-    fi
-
-    case "${sanitizer}" in
-    address)
-        generateArgs="${generateArgs} -DSANITIZE_ADDRESS:Bool=On"
-        ;;
-    memory)
-        generateArgs="${generateArgs} -DSANITIZE_MEMORY:Bool=On"
-        ;;
-    thread)
-        generateArgs="${generateArgs} -DSANITIZE_THREAD:Bool=On"
-        ;;
-    undef)
-        generateArgs="${generateArgs} -DSANITIZE_UNDEFINED:Bool=On"
-        ;;
-    *)
-        ;;
-    esac
-else
-    echo "${scriptName}: !!! Sanitizer support only enabled for the Debug configuration. Ignored." >&2
+if [ x"${sanitizer}" != x ]; then
+    ## Adjust the test timeout because the sanitizers have add'l
+    ## runtime overhead (at least 2x)
+    testTimeout=600
 fi
+
+case "${sanitizer}" in
+address)
+    generateArgs="${generateArgs} -DSANITIZE_ADDRESS:Bool=On"
+    ;;
+memory)
+    generateArgs="${generateArgs} -DSANITIZE_MEMORY:Bool=On"
+    ;;
+thread)
+    generateArgs="${generateArgs} -DSANITIZE_THREAD:Bool=On"
+    ;;
+undef)
+    generateArgs="${generateArgs} -DSANITIZE_UNDEFINED:Bool=On"
+    ;;
+*)
+    ;;
+esac
 
 ## Determine the SIMH top-level source directory:
 simhTopDir=$(${dirname} $(${realpath} $0))

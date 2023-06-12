@@ -28,6 +28,8 @@ set(FLAG_CANDIDATES
     # MSVC uses
     "/fsanitize=thread"
     # GNU/Clang
+    "-g -fsanitize=thread -fno-omit-frame-pointer -fPIE"
+    "-g -fsanitize=thread -fno-omit-frame-pointer"
     "-g -fsanitize=thread"
 )
 

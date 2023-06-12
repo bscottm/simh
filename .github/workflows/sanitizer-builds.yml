@@ -5,43 +5,47 @@ on:
 
 jobs:
   sanitizer-unix:
-    name: Ubuntu/MacOSX
+    name: Unixen
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-11]
+        os: [ubuntu-latest, ubuntu-20.04, macos-latest, macos-11]
         sanitizer: [ address, memory, thread, undef ]
     env:
-      builder:
-        ${{ (startsWith( matrix.os, 'ubuntu' ) && 'ninja') || 
-            (startsWith( matrix.os, 'macos') && 'xcode') }}
+      flavor:  ${{ (startsWith( matrix.os, 'ubuntu' ) && 'ninja') || (startsWith( matrix.os, 'macos')   && 'xcode') }}
+      deparg:  ${{ (startsWith( matrix.os, 'ubuntu' ) && 'linux') || (startsWith( matrix.os, 'macos')   && 'osx') }}
+      ## For the Ubuntu Linux flavor builds, use Clang instead of GCC. The sanitizers
+      ## are better suited to Clang.
+      ccenv:   ${{ (startsWith( matrix.os, 'ubuntu' ) && 'CC=clang') || '' }}
+      cxxenv:  ${{ (startsWith( matrix.os, 'ubuntu' ) && 'CXX=clang') || '' }}
     steps:
     - uses: actions/checkout@v3
-    - name: Install Linux dependencies
-      if: ${{ !contains( matrix.os, 'macos') }}
+    - name: Install dependencies
       run: |
-        sh -ex .travis/deps.sh linux
+        sh -ex .travis/deps.sh ${{ env.deparg }}
+    - name: Install Ninja builder
+      if: ${{ startsWith( matrix.os, 'ubuntu') }}
+      run: |
         sudo apt install -ym ninja-build
-    - name: Install MacOSX dependencies
-      if: ${{ contains( matrix.os, 'macos') }}
-      run: |
-        sh -ex .travis/deps.sh osx
     - name: cmake-builder.sh
       run: |
-        cmake/cmake-builder.sh --config Debug --flavor ${{ env.builder }} --sanitizer ${{ matrix.sanitizer }} --notest --parallel --verbose
+        ${{ env.ccenv }} ${{ env.cxxenv }} \
+          cmake/cmake-builder.sh --config Release --flavor ${{ env.flavor }} --sanitizer ${{ matrix.sanitizer }} --notest --parallel --verbose
     - name: SIMH simulator suite test
       run: |
-        cmake/cmake-builder.sh --config Debug --flavor ${{ env.builder }} --sanitizer ${{ matrix.sanitizer }} --testonly
+        ${{ env.ccenv }} ${{ env.cxxenv }} \
+          cmake/cmake-builder.sh --config Release --flavor ${{ env.flavor }} --sanitizer ${{ matrix.sanitizer }} --testonly
 
+  ## MS only supports address sanitization:
   cmake-vs2022:
-    name: VS 2022 Win10 native VCPKG
+    name: VS 2022
     runs-on: ${{ matrix.os }}
     continue-on-error: true
     strategy:
       matrix:
         os: [windows-latest]
-        sanitizer: [ address, memory, thread, undef ]
+        sanitizer: [ address ]
     steps:
     - uses: actions/checkout@v3
     - name: vs2022 build

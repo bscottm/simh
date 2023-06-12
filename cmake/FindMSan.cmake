@@ -28,6 +28,8 @@ set(FLAG_CANDIDATES
     # MSVC uses
     "/fsanitize=memory"
     # GNU/Clang
+    "-g -fsanitize=memory -fno-omit-frame-pointer -fPIE"
+    "-g -fsanitize=memory -fno-omit-frame-pointer"
     "-g -fsanitize=memory"
 )
 
