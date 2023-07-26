@@ -13619,6 +13619,9 @@ if (debug_line_offset + len + 1 > debug_line_bufsize) {
     debug_line_bufsize += MAX(1024, debug_line_offset + len + 1);
     debug_line_buf = (char *)realloc (debug_line_buf, debug_line_bufsize);
     debug_line_buf_last = (char *)realloc (debug_line_buf_last, debug_line_bufsize);
+    /* MSan: Ensure debug_line_buf_last is initialized. If we realloc-ed it,
+     * then we really don't care what its contents are or were. */
+    memset(debug_line_buf_last, 0, debug_line_bufsize);
     }
 memcpy (&debug_line_buf[debug_line_offset], buf, len);
 debug_line_buf[debug_line_offset + len] = '\0';
