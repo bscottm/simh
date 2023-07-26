@@ -1,3 +1,16 @@
+# Scott's Fork from Open SIMH machine simulator project
+
+It's time I just went my own way with respect to [open-simh](https://github.com/open-simh/simh/). I have my own ideas on how to
+improve the codebase that are at odds with one original SIMH author. Open souce is supposed to be collaborative, not constant
+intellectual combat and responding to unrelated trivia. There's a point at which the noise from someone pounding the table needs to
+become background noise.
+
+## `mainpath` branch vs. `master` branch
+
+The `mainpath` branch is where I merge all of my development. The `master` branch still exists mainly to track changes from the
+open-simh project. `mainpath` is the default branch in Github.
+
+
 # Open SIMH machine simulator
 
 This is the codebase of SIMH, a framework and collection of computer system simulators.
