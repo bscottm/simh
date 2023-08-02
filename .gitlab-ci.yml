@@ -39,10 +39,9 @@ cmake-windows-native-build:
       popd
     - choco feature enable -n allowGlobalConfirmation
     - choco install -y nsis
-    - choco install -y wixtoolset
     - .\cmake\cmake-builder.ps1 -flavor vs2019 -config Release -clean -parallel -verbose -cpack_suffix win32-native
     - cd cmake\build-vs2019
-    - cpack -G "NSIS;WIX;ZIP" -C Release
+    - cpack -G "NSIS;ZIP" -C Release
     - cd ..\..
   artifacts:
     when: on_success
@@ -51,7 +50,6 @@ cmake-windows-native-build:
     paths:
       - "cmake/build-vs2019/simh-4.1.0-win32-native.zip"
       - "cmake/build-vs2019/simh-4.1.0-win32-native.exe"
-      - "cmake/build-vs2019/simh-4.1.0-win32-native.msi"
 
 
 ## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
@@ -115,5 +113,3 @@ do_release:
           url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-4.1.0-win32-native.zip'
         - name: 'simh-4.1.0-win32-native.exe'
           url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-4.1.0-win32-native.exe'
-        - name: 'simh-4.1.0-win32-native.msi'
-          url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-4.1.0-win32-native.msi'
