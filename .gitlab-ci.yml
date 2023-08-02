@@ -1,0 +1,184 @@
+# A pipeline is composed of independent jobs that run scripts, grouped into stages.
+# Stages run in sequential order, but jobs within stages run in parallel.
+#
+# For more information, see: https://docs.gitlab.com/ee/ci/yaml/index.html#stages
+
+.shared_windows_runners:
+  tags:
+    - shared-windows
+    - windows-1809
+  variables:
+    VCPKG_ROOT: C:\vcpkg
+
+.shared_linux_runners:
+  tags:
+    - saas-linux-small-amd64
+
+.shared_macos_runners:
+  tags:
+    - saas-macos-medium-m1
+  image: macos-12-xcode-14
+
+stages:
+  - prepenv
+  - build
+  - release
+
+
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+## The Windows build
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+
+cmake-windows-native-build:
+  extends:
+    - .shared_windows_runners
+  stage: build
+  needs:
+    - job: "prep_environment"
+      artifacts: true
+  script:
+    - |
+      if (!(Test-Path Env:\VCPKG_ROOT)) {
+        New-Item -Force -Path Env:\VCPKG_ROOT -Value ${VCPKG_ROOT}
+      }
+      pushd ${VCPKG_ROOT}
+      git checkout master
+      git pull --rebase
+      popd
+    - choco feature enable -n allowGlobalConfirmation
+    - choco install -y nsis
+    - .\cmake\cmake-builder.ps1 -flavor vs2019 -config Release -clean -parallel -verbose -cpack_suffix win32-native
+    - cd cmake\build-vs2019
+    - cpack -G "NSIS;ZIP" -C Release
+    - cd ..\..
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    name: "simh-$SIMH_VERSION-win32-vs2019"
+    paths:
+      - "cmake/build-vs2019/simh-$SIMH_VERSION-win32-native.zip"
+      - "cmake/build-vs2019/simh-$SIMH_VERSION-win32-native.exe"
+
+
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+## Ubuntu 22.04 (jammy)
+##
+## This runs inside the Ubuntu Docker container from hub.docker.com. The container is
+## pretty primeval, so GCC, Ninja and Git have to be installed before adding the
+## SIMH-required runtime dependencies.
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+
+cmake-ubuntu-jammy-build:
+  extends:
+    - .shared_linux_runners
+  image: ubuntu:jammy
+  stage: build
+  needs:
+    - job: "prep_environment"
+      artifacts: true
+  script:
+    - apt update && apt -ym upgrade && apt -y autoremove
+    - apt install -ym sudo gcc g++ ninja-build git cmake && .travis/deps.sh linux
+    - cmake/cmake-builder.sh --config Release --flavor ninja --parallel --verbose --cpack_suffix x86_64-ubuntu22.04
+    - cd cmake/build-ninja && cpack -G DEB -C Release
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    name: "simh-$SIMH_VERSION-x86_64-ubuntu22.04"
+    paths:
+      - "cmake/build-ninja/simh-$SIMH_VERSION-x86_64-ubuntu22.04.deb"
+
+
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+## macOS
+##
+## Note: This produces Apple Silicon images, not x86_64!
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+
+# cmake-macos-12-build:
+#   extends:
+#     - .shared_macos_runners
+#   stage: build
+#   needs:
+#     - job: "prep_environment"
+#       artifacts: true
+#   script:
+#     - .travis/deps.sh osx
+#     - cmake/cmake-builder.sh --config Release --flavor xcode --parallel --verbose --cpack_suffix apple-macos12
+#     - cd cmake/build-xcode && cpack -G "ZIP;TGZ" -C Release && cpack -G DragNDrop -C Release
+#   artifacts:
+#     when: on_success
+#     expire_in: 30 days
+#     name: "simh-$SIMH_VERSION-apple-macos12"
+#     paths:
+#       - "cmake/build-xcode/simh-$SIMH_VERSION-apple-macos12.zip"
+#       - "cmake/build-xcode/simh-$SIMH_VERSION-apple-macos12.dmg"
+
+
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+## Release management:
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+
+prep_environment:
+  # This stage must run before the release stage to set up the 'dotenv' artifact that
+  # do_release grabs for variables:
+
+  stage: prepenv
+  image: ubuntu:jammy
+
+  # Run this job when commits are pushed or merged to the default branch
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      variables:
+        TAGNAME: "latest"
+  script:
+    - apt update && apt -ym upgrade && apt -y autoremove && apt install -ym sudo gcc g++ cmake ninja-build
+    - echo "EXTRA_DESCRIPTION=Open-Simh latest release" > variables.env
+    - echo "TAG=$TAGNAME" >> variables.env
+    - cmake/cmake-builder.sh --config Release --flavor ninja --cache | grep SIMH_VERSION | sed 's/:.*=/=/' >> variables.env
+  artifacts:
+    reports:
+      # Use artifacts:reports:dotenv to expose the variables to other jobs
+      dotenv: variables.env
+
+do_release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: "cmake-windows-native-build"
+      artifacts: true
+    - job: "cmake-ubuntu-jammy-build"
+      artifacts: true
+    # - job: "cmake-macos-12-build"
+    #   artifacts: true
+    - job: "prep_environment"
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - echo "running release_job for $TAG"
+  artifacts:
+    name: "simh-$SIMH_VERSION-latest"
+    paths:
+      - "cmake/build-vs2019/simh-$SIMH_VERSON-win32-native.zip"
+      - "cmake/build-vs2019/simh-$SIMH_VERSION-win32-native.exe"
+      - "cmake/build-ninja/simh-$SIMH_VERSION-x86_64-ubuntu22.04.deb"
+      # - "cmake/build-xcode/simh-$SIMH_VERSION-apple-macos12.zip"
+      # - "cmake/build-xcode/simh-$SIMH_VERSION-apple-macos12.dmg"
+  release:
+    name: 'Release $TAG'
+    description: 'Created using the release-cli $EXTRA_DESCRIPTION'
+    tag_name: '$TAG'
+    ref: '$CI_COMMIT_SHA'
+    assets:
+      links:
+        - name: 'simh-$SIMH_VERSION-x86_64-ubuntu22.04.deb'
+          url: "https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-ninja/simh-$SIMH_VERSION-x86_64-ubuntu22.04.deb"
+        - name: 'simh-$SIMH_VERSION-win32-native.zip'
+          url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-$SIMH_VERSION-win32-native.zip'
+        - name: 'simh-$SIMH_VERSION-win32-native.exe'
+          url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-$SIMH_VERSION-win32-native.exe'
+        # - name: "cmake/build-xcode/simh-$SIMH_VERSION-x86_64.apple-macos12.zip"
+        #   url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-xcode/simh-$SIMH_VERSION-x86_64.apple-macos12.zip'
+        # - name: "cmake/build-xcode/simh-$SIMH_VERSION-x86_64.apple-macos12.dmg"
+        #   url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-xcode/simh-$SIMH_VERSION-x86_64.apple-macos12.dmg'
