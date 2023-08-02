@@ -20,10 +20,8 @@
   tags:
     - shared-windows
     - windows-1809
-  before_script:
-    - Set-Variable -Name "time" -Value (date -Format "%H:%m")
-    - echo ${time}
-    - echo "started by ${GITLAB_USER_NAME}"
+  variables:
+    VCPKG_ROOT: C:\vcpkg
 
 stages:          # List of stages for jobs, and their order of execution
   - build
@@ -36,11 +34,11 @@ cmake-windows-native:
     - .shared_windows_runners
   stage: build
   script:
-    - pushd C:\vcpkg
+    - New-Item -Path Env:\VCPKG_ROOT -Value ${VCPKG_ROOT}
+    - pushd ${VCPKG_ROOT}
     - git checkout master
     - git pull --rebase
     - popd
-    - $env:VCPKG_ROOT=C:\vcpkg
     - cmake\cmake-builder.ps1 -flavor vs2019 -config Release -parallel
 
 unit-test-job:   # This job runs in the test stage.
