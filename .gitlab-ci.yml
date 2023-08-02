@@ -50,20 +50,18 @@ cmake-windows-native-test:
   script:
     - ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -testOnly
 
-cmake-linux-build:
+## Ubuntu 22.04 (jammy)
+cmake-ubuntu-jammy-build:
   extends:
     - .shared_linux_runners
-  image:
-    name: ubuntu:jammy
+  image: ubuntu:jammy
   stage: build
   script:
-    - apt update
-    - apt install -ym sudo gcc ninja-build
+    - apt update && apt upgrade && apt install -ym sudo gcc g++ ninja-build
     - .travis/deps.sh linux
-    - sudo apt install -ym ninja-build
-    - cmake/cmake-builder.sh --config Release --flavor ninja --lto --notest --parallel --verbose --cpack_suffix x86_64-linux
+    - cmake/cmake-builder.sh --config Release --flavor ninja --lto --notest --parallel --verbose --cpack_suffix x86_64-ubuntu22.04
 
-cmake-linux-test:
+cmake-ubuntu-jammy-test:
   extends:
     - .shared_linux_runners
   stage: test
