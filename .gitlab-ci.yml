@@ -55,10 +55,10 @@ cmake-linux-build:
     - .shared_linux_runners
   image:
     name: ubuntu:jammy
-  services:
-    - name: gcc:latest
   stage: build
   script:
+    - apt update
+    - apt install -ym sudo gcc ninja-build
     - .travis/deps.sh linux
     - sudo apt install -ym ninja-build
     - cmake/cmake-builder.sh --config Release --flavor ninja --lto --notest --parallel --verbose --cpack_suffix x86_64-linux
