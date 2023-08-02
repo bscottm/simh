@@ -2,14 +2,6 @@
 # Stages run in sequential order, but jobs within stages run in parallel.
 #
 # For more information, see: https://docs.gitlab.com/ee/ci/yaml/index.html#stages
-#
-# You can copy and paste this template into a new `.gitlab-ci.yml` file.
-# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
-#
-# To contribute improvements to CI/CD templates, please follow the Development guide at:
-# https://docs.gitlab.com/ee/development/cicd/templates.html
-# This specific template is located at:
-# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 
 .shared_windows_runners:
   tags:
@@ -24,6 +16,8 @@
 
 stages:
   - build
+  - prepare
+  - release
 
 
 ## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
@@ -48,10 +42,12 @@ cmake-windows-native-build:
   artifacts:
     when: on_success
     expire_in: 30 days
+    name: "simh-4.1.0-win32-vs2019"
     paths:
       - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.zip"
       - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.exe"
       - "cmake/build-vs2019/simh-4.1.0-win32-native.msi"
+
 
 ## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 ## Ubuntu 22.04 (jammy)
@@ -71,5 +67,45 @@ cmake-ubuntu-jammy-build:
   artifacts:
     when: on_success
     expire_in: 30 days
+    name: "simh-4.1.0-x86_64-ubuntu22.04"
     paths:
       - "cmake/build-ninja/simh-4.1.0-x86_64-ubuntu22.04.deb"
+
+prep_release:
+  stage: prepare                                              # This stage must run before the release stage
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH             # Run this job when commits are pushed or merged to the default branch
+  script:
+    - echo "EXTRA_DESCRIPTION=open-simh-latest release" > variables.env
+    - echo "TAG=latest" >> variables.env
+  artifacts:
+    reports:
+      dotenv: variables.env                                   # Use artifacts:reports:dotenv to expose the variables to other jobs
+
+do_release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: "cmake-windows-native-build"
+      artifacts: true
+    - job: "cmake-ubuntu-jammy-build"
+      artifacts: true
+    - job: "prep_release"
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH  # Run this job when commits are pushed or merged to the default branch
+  script:
+    - echo "running release_job for $TAG"
+  release:
+    name: 'Release $TAG'
+    description: 'Created using the release-cli $EXTRA_DESCRIPTION'  # $EXTRA_DESCRIPTION and the $TAG
+    tag_name: '$TAG'                                                 # variables must be defined elsewhere
+    ref: '$CI_COMMIT_SHA'                                            # in the pipeline. For example, in the
+    # assets:
+    #   links:
+    #     - name: 'asset1'
+    #       url: 'https://example.com/assets/1'
+    #     - name: 'asset2'
+    #       url: 'https://example.com/assets/2'
+    #       filepath: '/pretty/url/1' # optional
+    #       link_type: 'other' # optional
