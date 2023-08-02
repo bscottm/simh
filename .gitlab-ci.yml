@@ -34,11 +34,14 @@ cmake-windows-native:
     - .shared_windows_runners
   stage: build
   script:
-    - New-Item -Path Env:\VCPKG_ROOT -Value ${VCPKG_ROOT}
-    - pushd ${VCPKG_ROOT}
-    - git checkout master
-    - git pull --rebase
-    - popd
+    - |
+      if (!(Test-Path Env:\VCPKG_ROOT)) {
+        New-Item -Force -Path Env:\VCPKG_ROOT -Value ${VCPKG_ROOT}
+      }
+      pushd ${VCPKG_ROOT}
+      git checkout master
+      git pull --rebase
+      popd
     - cmake\cmake-builder.ps1 -flavor vs2019 -config Release -parallel
 
 unit-test-job:   # This job runs in the test stage.
