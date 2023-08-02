@@ -22,13 +22,15 @@
   tags:
     - saas-linux-small-amd64
 
-stages:          # List of stages for jobs, and their order of execution
+stages:
   - build
-  - test
-  - deploy
 
+
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 ## The Windows build
-cmake-windows-native:
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+
+cmake-windows-native-build:
   extends:
     - .shared_windows_runners
   stage: build
@@ -41,16 +43,20 @@ cmake-windows-native:
       git checkout master
       git pull --rebase
       popd
-    - ./cmake/cmake-builder.ps1 -flavor vs2019 -config Release -clean -parallel -lto -verbose -notest -cpack_suffix win32-native
+    - ./cmake/cmake-builder.ps1 -flavor vs2019 -config Release -clean -parallel -verbose -cpack_suffix win32-native
+    - cd cmake\build-vs2019 && cpack -G "NSIS;WIX;ZIP" -C Release
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    paths:
+      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.zip"
+      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.exe"
+      - "cmake/build-vs2019/simh-4.1.0-win32-native.msi"
 
-cmake-windows-native-test:
-  extends:
-    - .shared_windows_runners
-  stage: test
-  script:
-    - ./cmake/cmake-builder.ps1 -flavor vs2022 -config Release -testOnly
-
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 ## Ubuntu 22.04 (jammy)
+## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+
 cmake-ubuntu-jammy-build:
   extends:
     - .shared_linux_runners
@@ -60,18 +66,10 @@ cmake-ubuntu-jammy-build:
     - apt update && apt -ym upgrade && apt -y autoremove
     - apt install -ym sudo gcc g++ ninja-build git
     - .travis/deps.sh linux
-    - cmake/cmake-builder.sh --config Release --flavor ninja --lto --notest --parallel --verbose --cpack_suffix x86_64-ubuntu22.04
-
-cmake-ubuntu-jammy-test:
-  extends:
-    - .shared_linux_runners
-  stage: test
-  script:
-    - cmake/cmake-builder.sh --config Release --flavor ninja --testonly
-
-deploy-job:      # This job runs in the deploy stage.
-  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
-  environment: production
-  script:
-    - echo "Deploying application..."
-    - echo "Application successfully deployed."
+    - cmake/cmake-builder.sh --config Release --flavor ninja --parallel --verbose --cpack_suffix x86_64-ubuntu22.04
+    - cd cmake/build-ninja && cpack -G DEB -C Release
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    paths:
+      - "cmake/build-ninja/simh-4.1.0-x86_64-x86_64-ubuntu22.04.deb"
