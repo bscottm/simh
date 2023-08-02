@@ -48,8 +48,8 @@ cmake-windows-native-build:
     expire_in: 30 days
     name: "simh-4.1.0-win32-vs2019"
     paths:
-      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.zip"
-      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.exe"
+      - "cmake/build-vs2019/simh-4.1.0-win32-native.zip"
+      - "cmake/build-vs2019/simh-4.1.0-win32-native.exe"
       - "cmake/build-vs2019/simh-4.1.0-win32-native.msi"
 
 
@@ -77,6 +77,7 @@ cmake-ubuntu-jammy-build:
 
 prep_release:
   stage: prepare                                              # This stage must run before the release stage
+  needs: ["cmake-windows-native-build", "cmake-ubuntu-jammy-build"]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH             # Run this job when commits are pushed or merged to the default branch
   script:
@@ -105,11 +106,13 @@ do_release:
     description: 'Created using the release-cli $EXTRA_DESCRIPTION'  # $EXTRA_DESCRIPTION and the $TAG
     tag_name: '$TAG'                                                 # variables must be defined elsewhere
     ref: '$CI_COMMIT_SHA'                                            # in the pipeline. For example, in the
-    # assets:
-    #   links:
-    #     - name: 'asset1'
-    #       url: 'https://example.com/assets/1'
-    #     - name: 'asset2'
-    #       url: 'https://example.com/assets/2'
-    #       filepath: '/pretty/url/1' # optional
-    #       link_type: 'other' # optional
+    assets:
+      links:
+        - name: 'simh-4.1.0-x86_64-ubuntu22.04.deb'
+          url: "https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-ninja/simh-4.1.0-x86_64-ubuntu22.04.deb"
+        - name: 'simh-4.1.0-win32-native.zip'
+          url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-4.1.0-win32-native.zip'
+        - name: 'simh-4.1.0-win32-native.exe'
+          url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-4.1.0-win32-native.exe'
+        - name: 'simh-4.1.0-win32-native.msi'
+          url: 'https://gitlab.com/scooter-phd/open-simh/-/jobs/${CI_JOB_ID}/artifacts/file/cmake/build-vs2019/simh-4.1.0-win32-native.msi'
