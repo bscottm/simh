@@ -49,9 +49,9 @@ cmake-windows-native-build:
     when: on_success
     expire_in: 30 days
     paths:
-      - "simh-4.1.0-win32-vs2019.zip"
-      - "simh-4.1.0-win32-vs2019.exe"
-      - "simh-4.1.0-win32-native.msi"
+      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.zip"
+      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.exe"
+      - "cmake/build-vs2019/simh-4.1.0-win32-native.msi"
 
 ## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 ## Ubuntu 22.04 (jammy)
@@ -72,4 +72,4 @@ cmake-ubuntu-jammy-build:
     when: on_success
     expire_in: 30 days
     paths:
-      - "simh-4.1.0-x86_64-x86_64-ubuntu22.04.deb"
+      - "cmake/build-ninja/simh-4.1.0-x86_64-ubuntu22.04.deb"
