@@ -57,7 +57,7 @@ cmake-ubuntu-jammy-build:
   image: ubuntu:jammy
   stage: build
   script:
-    - apt update && apt upgrade && apt install -ym sudo gcc g++ ninja-build
+    - apt update && apt -ym upgrade && apt -y autoremove && apt install -ym sudo gcc g++ ninja-build
     - .travis/deps.sh linux
     - cmake/cmake-builder.sh --config Release --flavor ninja --lto --notest --parallel --verbose --cpack_suffix x86_64-ubuntu22.04
 
