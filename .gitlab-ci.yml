@@ -53,7 +53,10 @@ cmake-windows-native-test:
 cmake-linux-build:
   extends:
     - .shared_linux_runners
-  image: gcc:latest
+  image:
+    name: ubuntu:jammy
+  services:
+    - name: gcc:latest
   stage: build
   script:
     - .travis/deps.sh linux
