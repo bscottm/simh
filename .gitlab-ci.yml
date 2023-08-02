@@ -30,7 +30,6 @@ cmake-windows-native-build:
   stage: build
   script:
     - |
-      $PSVersionTable
       if (!(Test-Path Env:\VCPKG_ROOT)) {
         New-Item -Force -Path Env:\VCPKG_ROOT -Value ${VCPKG_ROOT}
       }
@@ -38,6 +37,8 @@ cmake-windows-native-build:
       git checkout master
       git pull --rebase
       popd
+    - choco install nsis
+    - choco install wixtoolset
     - .\cmake\cmake-builder.ps1 -flavor vs2019 -config Release -clean -parallel -verbose -cpack_suffix win32-native
     - cd cmake\build-vs2019
     - cpack -G "NSIS;WIX;ZIP" -C Release
