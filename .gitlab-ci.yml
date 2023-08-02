@@ -43,15 +43,15 @@ cmake-windows-native-build:
       git checkout master
       git pull --rebase
       popd
-    - ./cmake/cmake-builder.ps1 -flavor vs2019 -config Release -clean -parallel -verbose -cpack_suffix win32-native
+    - .\cmake\cmake-builder.ps1 -flavor vs2019 -config Release -clean -parallel -verbose -cpack_suffix win32-native
     - cd cmake\build-vs2019 && cpack -G "NSIS;WIX;ZIP" -C Release
   artifacts:
     when: on_success
     expire_in: 30 days
     paths:
-      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.zip"
-      - "cmake/build-vs2019/simh-4.1.0-win32-vs2019.exe"
-      - "cmake/build-vs2019/simh-4.1.0-win32-native.msi"
+      - "simh-4.1.0-win32-vs2019.zip"
+      - "simh-4.1.0-win32-vs2019.exe"
+      - "simh-4.1.0-win32-native.msi"
 
 ## ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 ## Ubuntu 22.04 (jammy)
@@ -72,4 +72,4 @@ cmake-ubuntu-jammy-build:
     when: on_success
     expire_in: 30 days
     paths:
-      - "cmake/build-ninja/simh-4.1.0-x86_64-x86_64-ubuntu22.04.deb"
+      - "simh-4.1.0-x86_64-x86_64-ubuntu22.04.deb"
