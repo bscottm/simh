@@ -37,9 +37,10 @@ cmake-windows-native:
   stage: build
   script:
     - pushd C:\vcpkg
-    - git co master
-    - git pull
+    - git checkout master
+    - git pull --rebase
     - popd
+    - $env:VCPKG_ROOT=C:\vcpkg
     - cmake\cmake-builder.ps1 -flavor vs2019 -config Release -parallel
 
 unit-test-job:   # This job runs in the test stage.
