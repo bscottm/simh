@@ -10,7 +10,7 @@ jobs:
     continue-on-error: true
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-20.04, macos-latest, macos-11]
+        os: [ubuntu-latest, macos-latest]
         sanitizer: [ address, memory, thread, undef ]
     env:
       flavor:  ${{ (startsWith( matrix.os, 'ubuntu' ) && 'ninja') || (startsWith( matrix.os, 'macos')   && 'xcode') }}
