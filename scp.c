@@ -13560,6 +13560,7 @@ const char *debug_bstates = "01_^";
 AIO_TLS char debug_line_prefix[256];
 int32 debug_unterm  = 0;
 char *debug_line_buf_last = NULL;
+size_t debug_line_buf_last_len = 0;
 size_t debug_line_buf_last_endprefix_offset = 0;
 AIO_TLS char debug_line_last_prefix[256];
 char *debug_line_buf = NULL;
@@ -13622,9 +13623,10 @@ if (sim_deb_switches & SWMASK ('F')) {              /* filtering disabled? */
     }
 AIO_LOCK;
 if (debug_line_offset + len + 1 > debug_line_bufsize) {
-    /* realloc(NULL, size) == malloc(size). Really. It is. Initialize
-     * the malloc()-ed space. */
-    int do_init = 0; /*(NULL == debug_line_buf) || (NULL == debug_line_buf_last);*/
+    /* realloc(NULL, size) == malloc(size). Initialize the malloc()-ed space. Only
+       need to test debug_line_buf since SIMH allocates both buffers at the same
+       time. */
+    const int do_init = (NULL == debug_line_buf);
 
     debug_line_bufsize += MAX(1024, debug_line_offset + len + 1);
     debug_line_buf = (char *)realloc (debug_line_buf, debug_line_bufsize);
@@ -13638,8 +13640,8 @@ if (debug_line_offset + len + 1 > debug_line_bufsize) {
 memcpy (&debug_line_buf[debug_line_offset], buf, len);
 debug_line_buf[debug_line_offset + len] = '\0';
 debug_line_offset += len;
-while ((eol = strchr (debug_line_buf, '\n')) || flush) {
-    char *endprefix = strstr (debug_line_buf, ")> ");
+while (NULL != (eol = strchr (debug_line_buf, '\n')) || flush) {
+    const char *endprefix = strstr (debug_line_buf, ")> ");
     size_t linesize = (eol - debug_line_buf) + 1;
 
     if ((0 != memcmp ("DBG(", debug_line_buf, 4)) || (endprefix == NULL)) {
@@ -13666,12 +13668,18 @@ while ((eol = strchr (debug_line_buf, '\n')) || flush) {
             debug_line_buf_last_endprefix_offset = endprefix - debug_line_buf;
             memcpy (debug_line_buf_last, debug_line_buf, linesize);
             debug_line_buf_last[linesize] = '\0';
+            debug_line_buf_last_len = (NULL != eol) ? eol - endprefix + 1 : linesize;
             debug_line_count = 1;
             }
         else {
-            if (0 == memcmp (&debug_line_buf[endprefix - debug_line_buf], 
+            const size_t compare_len = eol - endprefix + 1;
+
+            /* Ensure SIMH only executes memcmp() if the last message's comparison length
+               is the same as the current debug line's comparison length. */
+            if (debug_line_buf_last_len == compare_len &&
+                0 == memcmp (&debug_line_buf[endprefix - debug_line_buf], 
                              &debug_line_buf_last[debug_line_buf_last_endprefix_offset], 
-                             (eol - endprefix))) {
+                             compare_len)) {
                 ++debug_line_count;
                 memcpy (debug_line_last_prefix, debug_line_buf, (endprefix - debug_line_buf) + 3);
                 debug_line_last_prefix[(endprefix - debug_line_buf) + 3] = '\0';
@@ -13688,6 +13696,7 @@ while ((eol = strchr (debug_line_buf, '\n')) || flush) {
                 debug_line_buf_last_endprefix_offset = endprefix - debug_line_buf;
                 memcpy (debug_line_buf_last, debug_line_buf, linesize);
                 debug_line_buf_last[linesize] = '\0';
+                debug_line_buf_last_len = (NULL != eol) ? compare_len : linesize;
                 debug_line_count = 1;
                 }
             }
