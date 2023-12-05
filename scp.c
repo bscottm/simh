@@ -13671,7 +13671,7 @@ while ((eol = strchr (debug_line_buf, '\n')) || flush) {
         else {
             if (0 == memcmp (&debug_line_buf[endprefix - debug_line_buf], 
                              &debug_line_buf_last[debug_line_buf_last_endprefix_offset], 
-                             (eol - endprefix)+ 1)) {
+                             (eol - endprefix))) {
                 ++debug_line_count;
                 memcpy (debug_line_last_prefix, debug_line_buf, (endprefix - debug_line_buf) + 3);
                 debug_line_last_prefix[(endprefix - debug_line_buf) + 3] = '\0';
