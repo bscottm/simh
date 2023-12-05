@@ -13624,7 +13624,7 @@ AIO_LOCK;
 if (debug_line_offset + len + 1 > debug_line_bufsize) {
     /* realloc(NULL, size) == malloc(size). Really. It is. Initialize
      * the malloc()-ed space. */
-    int do_init = (NULL == debug_line_buf) || (NULL == debug_line_buf_last);
+    int do_init = 0; /*(NULL == debug_line_buf) || (NULL == debug_line_buf_last);*/
 
     debug_line_bufsize += MAX(1024, debug_line_offset + len + 1);
     debug_line_buf = (char *)realloc (debug_line_buf, debug_line_bufsize);
