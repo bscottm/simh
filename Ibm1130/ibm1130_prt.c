@@ -506,11 +506,13 @@ static t_stat prt1132_svc (UNIT *uptr)
 void save_1403_prt_line (int32 addr)
 {
     size_t j;
-    int i, r, ch, even = TRUE;
+    int i, r, even = TRUE;
     unsigned char ebcdic;
-    int32 wd;
+    int32 wd = 0;
 
     for (i = 0; i < PRT1403_COLUMNS; i++) {
+        int ch;
+
         if (even) {                                     /* fetch next word from memory */
             wd     = M[addr++];
             ebcdic = (unsigned char) ((wd >> 8) & 0x7F);
@@ -655,6 +657,8 @@ static t_stat prt_reset (DEVICE *dptr)
     UNIT *uptr = &prt_unit[0];
     size_t i;
 
+    SIM_UNUSED_PARAM(dptr);
+
     sim_cancel(uptr);
 
     memset(cctape, 0, sizeof(cctape));          /* copy punch list into carriage control tape image */
@@ -676,7 +680,7 @@ static t_stat prt_reset (DEVICE *dptr)
 
     if (IS_1132(uptr)) {
         CLRBIT(ILSW[1], ILSW_1_1132_PRINTER);
-        PRT_DSW = cc_format_1132(cctape[prt_row]);
+        PRT_DSW = (int16) cc_format_1132(cctape[prt_row]);
         if (! IS_ONLINE(uptr))
             SETBIT(PRT_DSW, PRT1132_DSW_NOT_READY);
     }

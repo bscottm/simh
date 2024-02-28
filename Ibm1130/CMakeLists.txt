@@ -36,6 +36,7 @@ add_simulator(ibm1130
     TEST ibm1130)
 
 if (WIN32)
+    ## Add GUI support, compile in resources:
     target_compile_definitions(ibm1130 PRIVATE GUI_SUPPORT)
-    ## missing source in IBM1130?    ## target_sources(ibm1130 PRIVATE ibm1130.c)
+    target_sources(ibm1130 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ibm1130.rc)
 endif()

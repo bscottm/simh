@@ -290,7 +290,7 @@ int     bContinue;                                          /* true if continue 
 
 const char* EditToWhitespace(char *p_pszEdit, int width)
 {
-int     iI;                                                 /* work integer */
+size_t  iI;                                                 /* work integer */
 int     iPos;                                               /* work integer for settings tab stops */
 char    pszLine[MAXLINE];                                   /* source line */
 char    pszWork[WORKSZ];                                    /* work buffer */
@@ -307,7 +307,7 @@ char    pszWork[WORKSZ];                                    /* work buffer */
         iI = 0;                                             /* output index */
         iPos = width + 1;                                   /* first tab position */
         while (iPos < 80) {                                 /* fill array up to but not including position 80 */
-            gaiPlainTabs[iI++] = iPos;
+            gaiPlainTabs[iI++] = (short) iPos;
             iPos += width;
         }
         gaiPlainTabs[iI] = 0;                               /* mark end of array */

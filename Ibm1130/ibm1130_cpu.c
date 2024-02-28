@@ -369,14 +369,14 @@ static uint16 ReadIndex (int32 tag)
         
     SAR = tag;                                  /* 1130: ordinary read from memory (like ReadW) */
     SBR = (int32) M[(tag) & mem_mask];
-    return SBR;
+    return (uint16) SBR;
 }
 
 static void WriteIndex (int32 tag, int32 d)
 {
 #ifdef ENABLE_1800_SUPPORT
     if (is_1800) {
-        XR[tag-1] = d;                          /* 1800: store in register */
+        XR[tag-1] = (uint16) d;                 /* 1800: store in register */
         return;
     }
 #endif
@@ -479,11 +479,10 @@ static int32 ibm1130_qcount ()
 {
     int32 i, cnt;
     UNIT *uptr;
-    DEVICE *dptr;
 
     cnt = 0;
     for (uptr = sim_clock_queue; uptr != QUEUE_LIST_END; uptr = uptr->next) {
-        dptr = find_dev_from_unit (uptr);
+        DEVICE *dptr = find_dev_from_unit (uptr);
         for (i=0; sim_devices[i]; i++)
             if (dptr == sim_devices[i]) {
                 cnt++;
@@ -1231,6 +1230,8 @@ static int simh_status_to_stopcode (int status)
 
 static t_bool bsctest (int32 DSPLC, t_bool reset_V)
 {
+    SIM_UNUSED_PARAM(reset_V);
+
     if (DSPLC & 0x01) {                     /* Overflow off (note inverted sense) */
         if (! V)
             return TRUE;
@@ -1269,8 +1270,6 @@ static t_bool bsctest (int32 DSPLC, t_bool reset_V)
 
 static void exit_irq (void)
 {
-    int i, bit;
-    
     GUI_BEGIN_CRITICAL_SECTION
 
     if (ipl == 5 && tbit) {             /* if we are exiting an INT_RUN interrupt, clear it for the next instruction */
@@ -1283,6 +1282,8 @@ static void exit_irq (void)
     int_mask = 0xFFFF;
 
     if (iplpending) {                   /* restore previous interrupt status */
+        size_t i;
+        uint32 bit;
         for (i = 0, bit = 0x20; i < 6; i++, bit >>= 1) {
             if (iplpending & bit) {
                 iplpending &= ~bit;
@@ -1314,6 +1315,8 @@ void break_simulation (t_stat stopreason)
 
 t_stat cpu_reset (DEVICE *dptr)
 {
+    SIM_UNUSED_PARAM(dptr);
+
     sim_init();
     wait_state = 0;                     /* cancel wait */
     wait_lamp  = TRUE;                  /* but keep the wait lamp lit on the GUI */
@@ -1357,6 +1360,9 @@ t_stat cpu_reset (DEVICE *dptr)
 
 t_stat cpu_ex (t_value *vptr, t_addr addr, UNIT *uptr, int32 sw)
 {
+    SIM_UNUSED_PARAM(uptr);
+    SIM_UNUSED_PARAM(sw);
+
     if (vptr == NULL) return SCPE_ARG;
 
     /* check this out -- save command hits it in weird way */
@@ -1374,6 +1380,9 @@ t_stat cpu_ex (t_value *vptr, t_addr addr, UNIT *uptr, int32 sw)
 
 t_stat cpu_dep (t_value val, t_addr addr, UNIT *uptr, int32 sw)
 {
+    SIM_UNUSED_PARAM(uptr);
+    SIM_UNUSED_PARAM(sw);
+
     if (addr < MEMSIZE) {
         M[addr] = (uint16) (val & 0xFFFF);
         return SCPE_OK;
@@ -1387,6 +1396,8 @@ t_stat cpu_dep (t_value val, t_addr addr, UNIT *uptr, int32 sw)
 
 t_stat cpu_svc (UNIT *uptr)
 {
+    SIM_UNUSED_PARAM(uptr);
+
     if ((ibkpt_addr & ~ILL_ADR_FLAG) == save_ibkpt)
         ibkpt_addr = save_ibkpt;
 
@@ -1402,6 +1413,10 @@ t_stat cpu_set_size (UNIT *uptr, int32 value, CONST char *cptr, void *desc)
 {
     t_bool used;
     int32 i;
+
+    SIM_UNUSED_PARAM(uptr);
+    SIM_UNUSED_PARAM(cptr);
+    SIM_UNUSED_PARAM(desc);
 
     if ((value <= 0) || (value > MAXMEMSIZE) || ((value & 0xFFF) != 0))
         return SCPE_ARG;
@@ -1431,6 +1446,10 @@ t_stat cpu_set_type (UNIT *uptr, int32 value, CONST char *cptr, void *desc)
 {
     REG *r;
 
+    SIM_UNUSED_PARAM(uptr);
+    SIM_UNUSED_PARAM(cptr);
+    SIM_UNUSED_PARAM(desc);
+
     is_1800 = (value & UNIT_1800) != 0;                 /* set is_1800 mode flag */
 
     for (r = cpu_reg; r->name != NULL; r++) {           /* unhide or hide 1800-specific registers & state */
@@ -1452,6 +1471,8 @@ t_stat cpu_set_type (UNIT *uptr, int32 value, CONST char *cptr, void *desc)
 void xio_1131_switches (int32 addr, int32 func, int32 modify)
 {
     char msg[80];
+
+    SIM_UNUSED_PARAM(modify);
 
     switch (func) {
         case XIO_READ:
@@ -1620,6 +1641,8 @@ static void show_backtrace (int nshow)
 static t_stat backtrace_cmd (int32 flag, CONST char *cptr)
 {
     int n;
+
+    SIM_UNUSED_PARAM(flag);
 
     if ((n = atoi(cptr)) <= 0)
         n = 6;
@@ -1940,12 +1963,17 @@ void debug_print (const char *fmt, ...)
 
 static t_stat view_cmd (int32 flag, CONST char *cptr)
 {
+    SIM_UNUSED_PARAM(flag);
+
 #ifdef _WIN32
     char cmdline[256];
 
     sprintf(cmdline, "notepad %s", cptr);
     WinExec(cmdline, SW_SHOWNORMAL);
+#else
+    SIM_UNUSED_PARAM(cptr);
 #endif
+
     return SCPE_OK;
 }
 
@@ -1960,8 +1988,10 @@ static void cgi_start (void)
         (*cgi_start_hook)();
 }
 
-static void cgi_stop (t_stat reason)
+static void cgi_stop (t_stat stop_reason)
 {
+    SIM_UNUSED_PARAM(stop_reason);
+
     if (cgi_end_hook != NULL)
         (*cgi_end_hook)();
 }

@@ -198,6 +198,17 @@ extern "C" {
 #define FALSE           0
 #endif
 
+/* Potentially unused parameter macro -- stifles compiler warnings about
+ * unused parameters in templated functions, etc. Usage:
+ *
+ * void some_function(void *isnt_used)
+ * {
+ *     SIM_UNUSED_PARAM(isnt_used);
+ *     ...
+ * }
+ */
+#define SIM_UNUSED_PARAM(p) (void)(p)
+
 /* SCP API shim.
 
    The SCP API for version 4.0 introduces a number of "pointer-to-const"

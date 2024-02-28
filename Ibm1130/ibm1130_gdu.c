@@ -1,5 +1,9 @@
 #include "ibm1130_defs.h"
 
+#if !defined(SIM_UNUSED_PARAM)
+#define SIM_UNUSED_PARAM(p) (void)(p)
+#endif
+
 /* ibm1130_gdu.c: IBM 1130 2250 Graphical Display Unit
 
    (Under construction)
@@ -93,10 +97,24 @@ REG gdu_reg[] = {
     { NULL }  };
 
 DEVICE gdu_dev = {
-    "GDU", &gdu_unit, gdu_reg, NULL,
-    1, 16, 16, 1, 16, 16,
-    NULL, NULL, gdu_reset,
-    NULL, NULL, NULL};
+    /* structure initialization by name is legitimate C99. */
+    .name = "GDU",
+    .units = &gdu_unit,
+    .registers = gdu_reg,
+    .modifiers = NULL,
+    .numunits = 1,
+    .aradix = 16,
+    .awidth = 16,
+    .aincr = 1,
+    .dradix = 16,
+    .dwidth = 16,
+    .examine = NULL,
+    .deposit = NULL,
+    .reset = gdu_reset,
+    .boot = NULL,
+    .attach = NULL,
+    .detach = NULL
+};
 
 /* -------------------------------------------------------------------------------------- */
 
@@ -205,6 +223,8 @@ void xio_2250_display (int32 addr, int32 func, int32 modify)
 
 static t_stat gdu_reset (DEVICE *dptr)
 {
+    SIM_UNUSED_PARAM(dptr);
+
     if (cgi) return SCPE_OK;                            /* ignore this device in CGI mode */
 
     halt_regeneration();
@@ -635,7 +655,7 @@ static void draw_characters (void)
         }
 
         if (dospace) {
-            gdu_x += ci->dx;
+            gdu_x += (int16) ci->dx;
             if (gdu_x > 1023 && last_abs) {     // line wrap
                 gdu_x = 0;
                 gdu_y -= (int16) ci->dy;
@@ -679,7 +699,7 @@ static HPEN hRedPen     = NULL;
 static HBRUSH hGrayBrush, hDarkBrush;
 static HPEN hBlackPen;
 static int halted = 0;                              // number of time intervals that GDU has been halted w/o a regeneration
-static UINT idTimer = 0;
+static UINT_PTR idTimer = 0;
 static t_bool painting = FALSE;
 static LRESULT APIENTRY GDUWndProc (HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
 static DWORD   WINAPI   GDUPump (LPVOID arg);
@@ -759,7 +779,7 @@ static void gdu_WM_DESTROY (HWND hWnd)
 {
     PostMessage(hWnd, WM_QUIT, 0, 0);
     if (idTimer != 0) {
-        KillTimer(hwGDU, 1);
+        KillTimer(hwGDU, idTimer);
         idTimer = 0;
         halted  = 10000;
         painting = FALSE;
@@ -772,6 +792,8 @@ static void gdu_WM_DESTROY (HWND hWnd)
 
 static void gdu_WM_GETMINMAXINFO (HWND hWnd, LPMINMAXINFO mm)
 {
+    SIM_UNUSED_PARAM(hWnd);
+
     mm->ptMinTrackSize.x = 100 + 2*INDWIDTH;
     mm->ptMinTrackSize.y = 100;
 }
@@ -898,8 +920,12 @@ static void gdu_WM_PAINT (HWND hWnd)
 
 // the window has been resized
 
-static void gdu_WM_SIZE (HWND hWnd, UINT state, int cx, int cy)
+static void gdu_WM_SIZE (HWND hWnd, UINT state, int new_cx, int new_cy)
 {
+    SIM_UNUSED_PARAM(state);
+    SIM_UNUSED_PARAM(new_cx);
+    SIM_UNUSED_PARAM(new_cy);
+
 #ifdef BLIT_MODE
     InvalidateRect(hWnd, NULL, FALSE);      // in blt mode, we'll paint a full black bitmap over the new screen size
 #else
@@ -911,6 +937,8 @@ static void gdu_WM_SIZE (HWND hWnd, UINT state, int cx, int cy)
 
 static void gdu_WM_SIZING (HWND hWnd, WPARAM fwSide, LPRECT r)
 {
+    SIM_UNUSED_PARAM(hWnd);
+
     switch (fwSide) {
         case WMSZ_LEFT:
         case WMSZ_RIGHT:
@@ -936,6 +964,8 @@ static void gdu_WM_SIZING (HWND hWnd, WPARAM fwSide, LPRECT r)
 static void gdu_WM_TIMER (HWND hWnd, UINT id)
 {
     HDC hDC;
+
+    SIM_UNUSED_PARAM(id);
 
     if (painting)       {                       // if GDU is running, update picture
         if ((gdu_dsw & GDU_DSW_BUSY) == 0) {    // regeneration is not to occur
@@ -979,9 +1009,10 @@ static LRESULT APIENTRY GDUWndProc (HWND hWnd, UINT iMessage, WPARAM wParam, LPA
         HANDLE(WM_SIZING);
         HANDLE(WM_TIMER);
         default:                    // any message we don't process
-            return DefWindowProc(hWnd, iMessage, wParam, lParam);
+            break;
+            
     }
-    return 0L;
+    return DefWindowProc(hWnd, iMessage, wParam, lParam);;
 }
 
 // graphic calls ----------------------------------------------------------------
@@ -1060,6 +1091,8 @@ static DWORD WINAPI GDUPump (LPVOID arg)
 {
     MSG msg;
     WNDCLASS wc;
+
+    SIM_UNUSED_PARAM(arg);
 
     if (! wcInited) {                               /* register Window class */
         memset(&wc, 0, sizeof(wc));

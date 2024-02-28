@@ -167,6 +167,8 @@ static t_stat ptr_reset (DEVICE *dptr)
 {
     sim_cancel(ptr_unit);
 
+    SIM_UNUSED_PARAM(dptr);
+
     CLRBIT(ptr_dsw, PTR1134_DSW_READER_BUSY | PTR1134_DSW_READER_RESPONSE);
     SETBIT(ptr_dsw, PTR1134_DSW_READER_NOT_READY);
 
@@ -186,6 +188,8 @@ static t_stat ptr_reset (DEVICE *dptr)
 static t_stat ptp_reset (DEVICE *dptr)
 {
     sim_cancel(ptp_unit);
+
+    SIM_UNUSED_PARAM(dptr);
 
     CLRBIT(ptr_dsw, PTR1134_DSW_PUNCH_BUSY | PTR1134_DSW_PUNCH_RESPONSE);
     SETBIT(ptr_dsw, PTR1134_DSW_PUNCH_NOT_READY);
@@ -234,6 +238,9 @@ static t_stat ptr_boot (int32 unitno, DEVICE *dptr)
     int ch, nch, val, addr;
     t_bool leader = TRUE, start = FALSE;
     t_stat rval;
+
+    SIM_UNUSED_PARAM(unitno);
+    SIM_UNUSED_PARAM(dptr);
 
     addr = 0;
     nch  = 0;

@@ -375,7 +375,7 @@ void xio_disk (int32 iocc_addr, int32 func, int32 modify, int drv)
 
 static void diskfail (UNIT *uptr, int dswflag, int unitflag, t_bool do_interrupt)
 {
-    int drv = uptr - dsk_unit;
+    size_t drv = uptr - dsk_unit;
 
     sim_cancel(uptr);                   /* cancel any pending ops */
     SETBIT(dsk_dsw[drv], dswflag);      /* set any specified DSW bits */
@@ -388,7 +388,8 @@ static void diskfail (UNIT *uptr, int dswflag, int unitflag, t_bool do_interrupt
 
 static t_stat dsk_svc (UNIT *uptr)
 {
-    int drv = uptr - dsk_unit, i, nwords, sec;
+    size_t drv = uptr - dsk_unit;
+    int i, nwords, sec;
     int16 buf[DSK_NUMWD];
     uint32 newpos;                      /* changed from t_addr to uint32 in anticipation of simh 64-bit development */
     int32 iocc_addr;
@@ -435,12 +436,13 @@ static t_stat dsk_svc (UNIT *uptr)
 
             void_backtrace(iocc_addr, iocc_addr + nwords - 1);      /* mark prev instruction as altered */
 
-            trace_io("* DSK%d read %d words from %d.%d (%x, %x) to M[%04x-%04x]", drv, nwords, uptr->CYL, sec, uptr->CYL*8 + sec, newpos, iocc_addr & mem_mask,
+            trace_io("* DSK%" SIZE_T_FMT "u read %d words from %d.%d (%x, %x) to M[%04x-%04x]", drv, nwords, uptr->CYL, sec, uptr->CYL*8 + sec, newpos, iocc_addr & mem_mask,
                 (iocc_addr + nwords - 1) & mem_mask);
 
             /* this will help debug the monitor by letting me watch phase loading */
             if (raw_disk_debug)
-                printf("* DSK%d XIO @ %04x read %d words from %d.%d (%x, %x) to M[%04x-%04x]\n", drv, prev_IAR, nwords, uptr->CYL, sec, uptr->CYL*8 + sec, newpos, iocc_addr & mem_mask,
+                printf("* DSK%" SIZE_T_FMT "u XIO @ %04x read %d words from %d.%d (%x, %x) to M[%04x-%04x]\n",
+                    drv, prev_IAR, nwords, uptr->CYL, sec, uptr->CYL*8 + sec, newpos, iocc_addr & mem_mask,
                     (iocc_addr + nwords - 1) & mem_mask);
 
             i = uptr->CYL*8 + sec;
@@ -457,7 +459,7 @@ static t_stat dsk_svc (UNIT *uptr)
             break;
         
         default:
-            fprintf(stderr, "Unexpected FUNC %x in dsk_svc(%d)\n", uptr->FUNC, drv);
+            fprintf(stderr, "Unexpected FUNC %x in dsk_svc(%" SIZE_T_FMT "u)\n", uptr->FUNC, drv);
             break;
             
     }
@@ -471,6 +473,8 @@ static t_stat dsk_reset (DEVICE *dptr)
 {
     int drv;
     UNIT *uptr;
+
+    SIM_UNUSED_PARAM(dptr);
 
 #ifdef TRACE_DMS_IO
     /* add the WHERE command. It finds the phase that was loaded at given address and indicates */
@@ -498,7 +502,7 @@ static t_stat dsk_reset (DEVICE *dptr)
 
 static t_stat dsk_attach (UNIT *uptr, CONST char *cptr)
 {
-    int drv = uptr - dsk_unit;
+    size_t drv = uptr - dsk_unit;
     t_stat rval;
     char gbuf[2*CBUFSIZE];
 
@@ -548,7 +552,7 @@ static t_stat dsk_attach (UNIT *uptr, CONST char *cptr)
 static t_stat dsk_detach (UNIT *uptr)
 {
     t_stat rval;
-    int drv = uptr - dsk_unit;
+    size_t drv = uptr - dsk_unit;
 
     sim_cancel(uptr);
 
@@ -577,6 +581,8 @@ static t_stat dsk_detach (UNIT *uptr)
 static t_stat dsk_boot (int32 unitno, DEVICE *dptr)
 {
     t_stat rval;
+
+    SIM_UNUSED_PARAM(dptr);
 
     if ((rval = reset_all(0)) != SCPE_OK)
         return rval;
@@ -651,6 +657,8 @@ static t_stat phdebug_cmd (int32 flag, CONST char *ptr)
 {
     int val1, val2;
 
+    SIM_UNUSED_PARAM(flag);
+
     if (strcmpi(ptr, "off") == 0)
         phdebug_lo = phdebug_hi = -1;
     else {
@@ -678,6 +686,8 @@ static t_stat where_cmd (int32 flag, CONST char *ptr)
 {
     int addr;
     const char *where;
+
+    SIM_UNUSED_PARAM(flag);
 
     if (! trace_dms) {
         printf("Tracing is disabled. To enable, attach disk with -d switch\n");
@@ -844,6 +854,9 @@ static t_stat fdump_cmd (int32 flags, CONST char *cptr)
     int addr = 0x7a24;                              /* address of next statement */
     int sofst = 0x7a26, symaddr;
     int cword, nwords, stype, has_stnum, strel = 1, laststno = 0;
+
+    SIM_UNUSED_PARAM(flags);
+    SIM_UNUSED_PARAM(cptr);
 
     addr = M[addr & mem_mask] & mem_mask;           /* get address of first statement */
     sofst = M[sofst & mem_mask] & mem_mask  ;       /* get address of symbol table */

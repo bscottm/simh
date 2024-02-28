@@ -122,8 +122,23 @@ extern t_bool program_is_loaded;
 
 static HWND hConsoleWindow = NULL;
 
+/* Console support: Cross-thread state.
+ *
+ * gui_initialized: Condition variable signal that GUI resources have been
+ *     acquired, about to enter the message dispatch loop.
+ */ 
+typedef struct console_support_s {
+    CRITICAL_SECTION gui_init_lock;
+    CONDITION_VARIABLE gui_initialized;
+    volatile LONG gui_init_flag;
+} ConsoleSupport;
+
+ConsoleSupport *consSupport = NULL;
+
 t_stat console_reset (DEVICE *dptr)
 {
+    SIM_UNUSED_PARAM(dptr);
+
     if (! sim_gui) {
         SETBIT(console_unit.flags, UNIT_DIS);           /* disable the GUI */
         CLRBIT(console_unit.flags, UNIT_DISPLAY);       /* turn the GUI off */
@@ -186,24 +201,24 @@ void scp_panic (const char *msg)
 #define TXTBOX_WIDTH    195
 #define TXTBOX_HEIGHT    12
 
-static BOOL   class_defined = FALSE;
-static HWND   hConsoleWnd = NULL;
-static HBITMAP hBitmap = NULL;
-static HFONT  hFont = NULL;
-static HFONT  hBtnFont = NULL;
-static HFONT  hTinyFont = NULL;
-static HBRUSH hbLampOut = NULL;
-static HBRUSH hbWhite = NULL;
-static HBRUSH hbBlack = NULL;
-static HBRUSH hbGray  = NULL;
-static HPEN   hSwitchPen = NULL;
-static HPEN   hWhitePen  = NULL;
-static HPEN   hBlackPen  = NULL;
-static HPEN   hLtGreyPen = NULL;
-static HPEN   hGreyPen   = NULL;
-static HPEN   hDkGreyPen = NULL;
-static int    hUpdateTimer = 0;
-static int    hFlashTimer  = 0;
+static BOOL     class_defined = FALSE;
+static HWND     hConsoleWnd = NULL;
+static HBITMAP  hBitmap = NULL;
+static HFONT    hFont = NULL;
+static HFONT    hBtnFont = NULL;
+static HFONT    hTinyFont = NULL;
+static HBRUSH   hbLampOut = NULL;
+static HBRUSH   hbWhite = NULL;
+static HBRUSH   hbBlack = NULL;
+static HBRUSH   hbGray  = NULL;
+static HPEN     hSwitchPen = NULL;
+static HPEN     hWhitePen  = NULL;
+static HPEN     hBlackPen  = NULL;
+static HPEN     hLtGreyPen = NULL;
+static HPEN     hGreyPen   = NULL;
+static HPEN     hDkGreyPen = NULL;
+static UINT_PTR hUpdateTimer = 0;
+static UINT_PTR hFlashTimer  = 0;
 
 static HCURSOR hcArrow = NULL;
 static HCURSOR hcHand  = NULL;
@@ -301,8 +316,23 @@ static void init_console_window (void)
     if (hConsoleWnd != NULL)
         return;
 
-    if (PumpID == 0)
-        hPump = CreateThread(NULL, 0, Pump, 0, 0, &PumpID);
+    if (consSupport == NULL) {
+        consSupport = (ConsoleSupport *) calloc(1, sizeof(ConsoleSupport));
+        InitializeCriticalSection(&consSupport->gui_init_lock);
+        InitializeConditionVariable(&consSupport->gui_initialized);
+        consSupport->gui_init_flag = 0;
+    }
+
+    if (PumpID == 0) {
+        hPump = CreateThread(NULL, 0, Pump, consSupport, 0, &PumpID);
+
+        /* Wait for GUI to acquire its resources and enter the message loop. */
+        EnterCriticalSection(&consSupport->gui_init_lock);
+        do {
+            SleepConditionVariableCS(&consSupport->gui_initialized, &consSupport->gui_init_lock, INFINITE);
+        } while (consSupport->gui_init_flag == 0);
+        LeaveCriticalSection(&consSupport->gui_init_lock);
+    }
 
     if (! did_atexit) {
         atexit(destroy_console_window);
@@ -316,8 +346,8 @@ static void init_console_window (void)
 
 static void destroy_console_window (void)
 {
-    int i;
-
+    size_t i;
+    
     if (hConsoleWnd != NULL)
         SendMessage(hConsoleWnd, WM_CLOSE, 0, 0);   /* cross thread call is OK */
 
@@ -332,16 +362,16 @@ static void destroy_console_window (void)
         hCDC = NULL;
     }
 
-    NIXOBJECT(hBitmap)
-    NIXOBJECT(hbLampOut)
-    NIXOBJECT(hFont)
+    NIXOBJECT(hBitmap);
+    NIXOBJECT(hbLampOut);
+    NIXOBJECT(hFont);
     NIXOBJECT(hBtnFont);
     NIXOBJECT(hTinyFont);
-    NIXOBJECT(hcHand)
-    NIXOBJECT(hSwitchPen)
-    NIXOBJECT(hLtGreyPen)
-    NIXOBJECT(hGreyPen)
-    NIXOBJECT(hDkGreyPen)
+    NIXOBJECT(hcHand);
+    NIXOBJECT(hSwitchPen);
+    NIXOBJECT(hLtGreyPen);
+    NIXOBJECT(hGreyPen);
+    NIXOBJECT(hDkGreyPen);
 
     for (i = 0; i < NBUTTONS; i++) {
         NIXOBJECT(btn[i].hbrLit);
@@ -582,7 +612,7 @@ WNDPROC oldButtonProc = NULL;
 
 LRESULT CALLBACK ButtonProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    int i;
+    LONG_PTR i;
 
     i = GetWindowLongPtr(hWnd, GWLP_ID);
 
@@ -751,22 +781,47 @@ HWND CreateSubclassedButton (HWND hwParent, UINT_PTR i)
     return hBtn;
 }
 
+/* Report Windows errors to the SIMH console/stdout. */
+static void report_windows_error(int is_err)
+{
+    if (is_err) {
+        LPVOID lpMsgBuf;
+        DWORD dw = GetLastError(); 
+
+        FormatMessage(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+            FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            dw,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR) &lpMsgBuf,
+            0, NULL );
+
+        sim_printf("Windows error: %s\n", lpMsgBuf);
+        LocalFree(lpMsgBuf);
+    }
+}
+
 /* ------------------------------------------------------------------------ 
  * Pump - thread that takes care of the console window. It has to be a separate thread so that it gets
  * execution time even when the simulator is compute-bound or IO-blocked. This routine creates the window
  * and runs a standard Windows message pump. The window function does the actual display work.
  * ------------------------------------------------------------------------ */
-
 static DWORD WINAPI Pump (LPVOID arg)
 {
     MSG msg;
-    int wx, wy;
+    LONG wx, wy;
     UINT_PTR i;
     RECT r, ra;
     BITMAP bm;
     WNDCLASS cd;
     HDC hDC;
     HWND hActWnd;
+    ConsoleSupport *support = (ConsoleSupport *) arg;
+
+    /* Condition variable protocol -- acquire the critical section. */
+    EnterCriticalSection(&support->gui_init_lock);
 
     hActWnd = GetForegroundWindow();
 
@@ -833,7 +888,8 @@ static DWORD WINAPI Pump (LPVOID arg)
         DragAcceptFiles(hConsoleWnd, TRUE);         /* let it accept dragged files (scripts) */
     }
 
-    GetObject(hBitmap, sizeof(bm), &bm);            /* get bitmap size */
+                                                    /* get bitmap size */
+    report_windows_error(GetObject(hBitmap, sizeof(bm), &bm) == 0);
     bmwid = bm.bmWidth;
     bmht  = bm.bmHeight;
 
@@ -867,7 +923,7 @@ static DWORD WINAPI Pump (LPVOID arg)
             btn[i].x, btn[i].y, btn[i].wx, btn[i].wy, hConsoleWnd, (HMENU) i, hInstance, NULL);
     btn[i].state = STATE_1442_EMPTY;
 
-    wx = SendMessage(btn[i].hBtn, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) hbm1442_empty);
+    (void) SendMessage(btn[i].hBtn, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) hbm1442_empty);
 
     i = IDC_1132;
 
@@ -875,9 +931,10 @@ static DWORD WINAPI Pump (LPVOID arg)
             btn[i].x, btn[i].y, btn[i].wx, btn[i].wy, hConsoleWnd, (HMENU) i, hInstance, NULL);
     btn[i].state = FALSE;
 
-    wx = SendMessage(btn[i].hBtn, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) hbm1132_empty);
+    (void) SendMessage(btn[i].hBtn, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) hbm1132_empty);
 
-    GetWindowRect(hConsoleWnd, &r);                 /* get window size as created */
+    report_windows_error(GetWindowRect(hConsoleWnd, &r) == 0);        /* get window size as created */
+
     wx = r.right  - r.left + 1;
     wy = r.bottom - r.top  + 1;
 
@@ -888,7 +945,8 @@ static DWORD WINAPI Pump (LPVOID arg)
         ReleaseDC(hConsoleWnd, hDC);
     }
 
-    GetClientRect(hConsoleWnd, &r);
+    report_windows_error(GetClientRect(hConsoleWnd, &r) == 0);
+
     wx = (wx - r.right  - 1) + bmwid;               /* compute new desired size based on how client area came out */
     wy = (wy - r.bottom - 1) + bmht;
     MoveWindow(hConsoleWnd, 0, 0, wx, wy, FALSE);   /* resize window */
@@ -910,7 +968,13 @@ static DWORD WINAPI Pump (LPVOID arg)
     if (running)                                    /* if simulator is already running, start update timer */
         gui_run(TRUE);
 
-    while (GetMessage(&msg, hConsoleWnd, 0, 0)) {   /* message pump - this basically loops forevermore */
+    /* Acquired all GUI resources, signal that the GUI is initialized: */
+    InterlockedIncrement(&support->gui_init_flag);
+    LeaveCriticalSection(&support->gui_init_lock);
+    WakeConditionVariable(&support->gui_initialized);
+
+                                                    /* message pump - this basically loops forevermore */
+    while (GetMessage(&msg, hConsoleWnd, 0, 0) != WM_QUIT) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
@@ -962,6 +1026,8 @@ static void DrawBits (HDC hDC, int x, int y, int bits, int nbits, int mask, char
 static void DrawToggles (HDC hDC, int bits)
 {
     int b, x;
+
+    SIM_UNUSED_PARAM(bits);
 
     for (b = 0x8000, x = TOGGLES_X; b != 0; b >>= 1) {
         if (shown_ces & b) {            /* up */
@@ -1018,6 +1084,9 @@ static BOOL HandleClick (HWND hWnd, int xh, int yh, BOOL actual, BOOL rightclick
 {
     int b, x, r, ang, i;
 
+    SIM_UNUSED_PARAM(hWnd);
+    SIM_UNUSED_PARAM(rightclick);
+
     for (b = 0x8000, x = TOGGLES_X; b != 0; b >>= 1) {
         if (BETWEEN(xh, x-3, x+8+3) && BETWEEN(yh, 230, 275)) {
             if (actual) {
@@ -1066,7 +1135,7 @@ static void DrawConsole (HDC hDC, PAINTSTRUCT *ps)
     static char waits[]  = " W";
     HFONT hOldFont, hOldBrush;
     RECT xout, xin;
-    int i, n;
+    int i;
     DEVICE *dptr;
     UNIT *uptr;
     t_bool enab;
@@ -1114,6 +1183,8 @@ static void DrawConsole (HDC hDC, PAINTSTRUCT *ps)
                     SetTextColor(hDC, RGB(128,0,0));
                 }
                 else if (uptr->flags & UNIT_ATT) {
+                    size_t n;
+
                     SetTextColor(hDC, RGB(0,0,255));
                     if ((n = strlen(uptr->filename)) > 30) {
                         strcpy(nametemp, "...");
@@ -1123,14 +1194,14 @@ static void DrawConsole (HDC hDC, PAINTSTRUCT *ps)
                     else
                         dispname = uptr->filename;
 
-                    TextOut(hDC, txtbox[i].x+25, txtbox[i].y+TXTBOX_HEIGHT, dispname, strlen(dispname));
+                    TextOut(hDC, txtbox[i].x+25, txtbox[i].y+TXTBOX_HEIGHT, dispname, (int) strlen(dispname));
                     SetTextColor(hDC, RGB(255,255,255));
                     enab = TRUE;
                 }
                 else {
                     SetTextColor(hDC, RGB(128,128,128));
                 }
-                TextOut(hDC, txtbox[i].x, txtbox[i].y, txtbox[i].txt, strlen(txtbox[i].txt));
+                TextOut(hDC, txtbox[i].x, txtbox[i].y, txtbox[i].txt, (int) strlen(txtbox[i].txt));
             }
 
             if (txtbox[i].idctrl >= 0)
@@ -1156,12 +1227,12 @@ void flash_run (void)
     hFlashTimer = SetTimer(hConsoleWnd, FLASH_TIMER_ID, LAMPTIME, NULL);
 }
 
-void gui_run (int running)
+void gui_run (int running_sim)
 {
     if (running && hUpdateTimer == 0 && hConsoleWnd != NULL) {
         hUpdateTimer = SetTimer(hConsoleWnd, UPDATE_TIMER_ID, 1000/UPDATE_INTERVAL, NULL);
     }
-    else if (hUpdateTimer != 0 && ! running) {
+    else if (hUpdateTimer != 0 && ! running_sim) {
         KillTimer(hConsoleWnd, UPDATE_TIMER_ID);
         hUpdateTimer = 0;
     }
@@ -1171,6 +1242,9 @@ void gui_run (int running)
 void HandleCommand (HWND hWnd, WORD wNotify, WORD idCtl, HWND hwCtl)
 {
     int i;
+
+    SIM_UNUSED_PARAM(hWnd);
+    SIM_UNUSED_PARAM(hwCtl);
 
     switch (idCtl) {
         case IDC_POWER:                     /* toggle system power */
@@ -1329,7 +1403,6 @@ LRESULT CALLBACK ConsoleWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
     PAINTSTRUCT ps;
     POINT p;
     RECT clip, xsect, rbmp;
-    int i;
 
     switch (uMsg) {
         case WM_CLOSE:
@@ -1382,10 +1455,11 @@ LRESULT CALLBACK ConsoleWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             HandleClick(hWnd, LOWORD(lParam), HIWORD(lParam), TRUE, TRUE);
             break;
 
-        case WM_CTLCOLORBTN:
-            i = GetWindowLongPtr((HWND) lParam, GWLP_ID);
+        case WM_CTLCOLORBTN: {
+            LONG_PTR i = GetWindowLongPtr((HWND) lParam, GWLP_ID);
             if (BETWEEN(i, 0, NBUTTONS-1))
                 return (LRESULT) (power && IsWindowEnabled((HWND) lParam) ? btn[i].hbrLit : btn[i].hbrDark);
+            }
 
         case WM_TIMER:
             if (wParam == FLASH_TIMER_ID && hFlashTimer != 0) {
@@ -1670,6 +1744,8 @@ static DWORD WINAPI CmdThread (LPVOID arg)
     HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
     DWORD dwBytesRead;
 
+    SIM_UNUSED_PARAM(arg);
+
     for (;;) {
         if (WAIT_TIMEOUT == WaitForSingleObject(hCmdReadEvent, 2000))   /* wait for request */
             continue;                                           /* put breakpoint here to debug */
@@ -1682,7 +1758,8 @@ static DWORD WINAPI CmdThread (LPVOID arg)
             NEXT_SCP_COMMAND;
             SetEvent(hCmdReadyEvent);                           /* notify main thread a line is ready */
         } else {
-            DWORD dwError = GetLastError();
+            /* DWORD dwError = GetLastError(); */
+            report_windows_error(TRUE);
 
             scp_reading = FALSE;
             NEXT_SCP_COMMAND;
@@ -1714,6 +1791,8 @@ static void read_atexit (void)
 char *read_cmdline (char *ptr, int size, FILE *stream)
 {
     char *cptr;
+
+    SIM_UNUSED_PARAM(stream);
 
     if (hCmdThread == NULL) {                               /* set up command-reading thread */
         if ((hCmdReadEvent  = CreateEvent(NULL, FALSE, FALSE, NULL)) == NULL)
@@ -1765,7 +1844,7 @@ long stuff_cmd (char *cmd)
     j++;
     ip[j] = ip[j-1];
     ip[j].Event.KeyEvent.bKeyDown = FALSE;
-    WriteConsoleInput(GetStdHandle(STD_INPUT_HANDLE), ip, 2+j, &dwEventsWritten);
+    WriteConsoleInput(GetStdHandle(STD_INPUT_HANDLE), ip, 2 + ((DWORD) j), &dwEventsWritten);
     free(ip);
     return scp_cmd;
 }

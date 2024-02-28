@@ -812,6 +812,10 @@ t_stat set_active_cr_code (int match)
 
 static t_stat cr_set_code (UNIT *uptr, int32 match, CONST char *cptr, void *desc)
 {
+    SIM_UNUSED_PARAM(uptr);
+    SIM_UNUSED_PARAM(cptr);
+    SIM_UNUSED_PARAM(desc);
+
     if (match == CODE_AUTO)
         match = guess_cr_code();
 
@@ -882,6 +886,10 @@ static t_stat cp_set_code (UNIT *uptr, int32 match, CONST char *cptr, void *desc
 {
     CPCODE *code;
     int ncode;
+
+    SIM_UNUSED_PARAM(uptr);
+    SIM_UNUSED_PARAM(cptr);
+    SIM_UNUSED_PARAM(desc);
 
     if (! lookup_codetable(match, &code, &ncode))
         return SCPE_ARG;
@@ -981,6 +989,9 @@ t_stat cr_boot (int32 unitno, DEVICE *dptr)
 {
     t_stat rval;
     int i;
+
+    SIM_UNUSED_PARAM(unitno);
+    SIM_UNUSED_PARAM(dptr);
 
     if ((rval = reset_all(0)) != SCPE_OK)
         return rval;
@@ -1502,6 +1513,8 @@ static t_bool nextdeck (void)
 
 static t_stat cr_reset (DEVICE *dptr)
 {
+    SIM_UNUSED_PARAM(dptr);
+
     if (GET_ACTCODE(cr_unit) == CODE_AUTO)
         SET_ACTCODE(cr_unit, CODE_029);         /* if actual code is not yet set, select 029 for now*/
 
@@ -1527,6 +1540,8 @@ static t_stat cr_reset (DEVICE *dptr)
 
 static t_stat cp_reset (DEVICE *dptr)
 {
+    SIM_UNUSED_PARAM(dptr);
+
     if (GET_CODE(cp_unit) == CODE_AUTO)
         SET_CODE(cp_unit, CODE_BINARY);             /* punch is never in auto mode; turn it to binary on startup */
 
@@ -2321,12 +2336,12 @@ static void pcr_xio_sense (int modify)
 static void report_error (char *msg, DWORD err)
 {
     char *lpMessageBuffer = NULL;
-        
+
     FormatMessage(
       FORMAT_MESSAGE_ALLOCATE_BUFFER |
       FORMAT_MESSAGE_FROM_SYSTEM,
       NULL,
-      GetLastError(),
+      err,
       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* The user default language */
       (LPTSTR) &lpMessageBuffer,
       0,
@@ -2347,6 +2362,8 @@ static DWORD CALLBACK pcr_thread (LPVOID arg)
     HANDLE objs[4];
     BOOL pick_queued = FALSE, reset_queued = FALSE;
 
+    SIM_UNUSED_PARAM(arg);
+    
     nwaits = 0;
 
     ZeroMemory(&ovRd,  sizeof(ovRd));

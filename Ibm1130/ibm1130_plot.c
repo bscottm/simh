@@ -33,6 +33,9 @@
     void xio_1627_plotter   (int32 addr, int32 func, int32 modify)
     {
         /* silently eat any plotter commands */
+        SIM_UNUSED_PARAM(addr);
+        SIM_UNUSED_PARAM(func);
+        SIM_UNUSED_PARAM(modify);
     }
 
 #else
