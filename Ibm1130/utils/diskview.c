@@ -106,7 +106,7 @@ int main (int argc, char **argv)
     if (fname == NULL)
         bail(usestr);
 
-    if ((fp = fopen(fname, "rb")) == NULL) {
+    if ((fp = util_fopen(fname, "rb")) == NULL) {
         perror(fname);
         return 2;
     }

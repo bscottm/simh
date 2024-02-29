@@ -148,6 +148,13 @@
 #include <ctype.h>
 #include "util_io.h"
 
+#if defined(_WIN32)
+#  define strcasecmp  _stricmp
+#  define strncasecmp _strnicmp
+#else
+#  include <unistd.h>
+#endif
+
 /********************************************************************************************
  * DEFINITIONS
  ********************************************************************************************/
@@ -164,11 +171,6 @@
 #define BETWEEN(v,a,b) (((v) >= (a)) && ((v) <= (b)))
 #define MIN(a,b)       (((a) <= (b)) ? (a) : (b))
 #define MAX(a,b)       (((a) >= (b)) ? (a) : (b))
-
-#ifndef _WIN32
-   int strnicmp (char *a, char *b, int n);
-   int strcmpi  (char *a, char *b);
-#endif
 
 #define FIX_ATS 
 
@@ -188,7 +190,7 @@
 #define MAXLITERALS 300
 #define MAXENTRIES   14
 
-#define LINEFORMAT    "                          %4ld | %s"
+#define LINEFORMAT    "                          %4d | %s"
 #define LEFT_MARGIN   "                                |"
                  /*  XXXX XXXX XXXX XXXX XXXX XXXX */
                  /*  org  w1   w2   w3   w4   w5 */
@@ -379,14 +381,14 @@ int ascii_to_1403_table[128] =
  ********************************************************************************************/
 
 void init (int argc, char **argv);
-void bail (char *msg);
+void bail (const char *msg);
 void flag (char *arg);
 void proc (char *fname);
 void startpass (int n);
 void errprintf (char *fmt, ...);
 void asm_error (char *fmt, ...);
 void asm_warning (char *fmt, ...);
-char *astring (char *str);
+char *astring (const char *str);
 PSYMBOL lookup_symbol (char *name, BOOL define);
 void add_xref (PSYMBOL s, BOOL definition);
 int  get_symbol (char *name);
@@ -414,9 +416,9 @@ void bincard_sbrk (char *line);
 void bincard_setorg (int neworg);
 void bincard_writew (int word, RELOC relative);
 void bincard_endcard (void);
-void handle_sbrk (char *line);
+void handle_sbrk (const char *line);
 void bincard_typecard (void);
-void namecode (unsigned short *words, char *tok);
+void namecode (unsigned short *words, const char *tok);
 int  signextend (int v);
 
 /********************************************************************************************
@@ -563,7 +565,7 @@ void flag (char *arg)
             case 'r':
                 if (sscanf(arg, "%d.%d", &major, &minor) != 2)
                     bail(usestr);
-                sprintf(dmsversion, "V%01.1dM%02.2d", major, minor);
+                sprintf(dmsversion, "V%01dM%02d", major, minor);
                 return;
 
             case 'f':
@@ -591,7 +593,7 @@ void flag (char *arg)
  * bail - print error message on stderr (only) and exit
  ********************************************************************************************/
 
-void bail (char *msg)
+void bail (const char *msg)
 {
     fprintf(stderr, "%s\n", msg);
     exit(1);
@@ -731,7 +733,6 @@ void passreport (void)
 
 void xref_list (void)
 {
-    int n = 0;
     PXREF x;
     PSYMBOL s;
 
@@ -739,13 +740,11 @@ void xref_list (void)
         return;
 
     fprintf(flist, "\n=== CROSS REFERENCES ==========================================================\n");
-
-    if (symbols == NULL || flist == NULL)
-        return;
-
     fprintf(flist, "Name  Val   Defd  Referenced\n");
 
     for (s = symbols; s != NULL; s = s->next) {
+        int n;
+
         fprintf(flist, "%-5s %04X%s", s->name, s->value & 0xFFFF, s->relative ? "R" : " ");
 
         for (x = s->xrefs; x != NULL; x = x->next)
@@ -794,7 +793,7 @@ void listhdr (void)
  * astring - allocate a copy of a string
  ********************************************************************************************/
 
-char *astring (char *str)
+char *astring (const char *str)
 {
     static char *s = NULL;
 
@@ -831,7 +830,7 @@ PSYMBOL lookup_symbol (char *name, BOOL define)
 #endif
                                         /* search sorted list of symbols */
     for (s = symbols; s != NULL; prv = s, s = s->next) {
-        c = strcmpi(s->name, name);
+        c = strcasecmp(s->name, name);
         if (c == 0)
             return s;
         if (c > 0)
@@ -872,7 +871,7 @@ void add_xref (PSYMBOL s, BOOL definition)
         return;
 
     for (x = s->xrefs; x != NULL; prv = x, x = x->next)
-        if (strcmpi(x->fname, curfn) == 0 && x->lno == lno)
+        if (strcasecmp(x->fname, curfn) == 0 && x->lno == lno)
             return;                     /* ignore multiple refs on same line */
 
     if ((n = malloc(sizeof(XREF))) == NULL)
@@ -1025,7 +1024,7 @@ void listout (BOOL reset)
         fputs(listline, flist);
         putc('\n', flist);
         if (reset)
-            sprintf(listline, LEFT_MARGIN, org);
+            sprintf(listline, LEFT_MARGIN);
     }
 }
 
@@ -1189,7 +1188,7 @@ void tabtok (char *c, char *tok, int i, char *save)
  * ifrom and ito on entry are column numbers, not indices; we change that right away
  ********************************************************************************************/
 
-void coltok (char *c, char *tok, int ifrom, int ito, BOOL condense, char *save)
+void coltok (const char *c, char *tok, int ifrom, int ito, BOOL condense, char *save)
 {
     char *otok = tok;
     int i;
@@ -1424,7 +1423,7 @@ struct tag_op ops[] = {
  * if outbuf is NULL, we allocate a buffer
  ********************************************************************************************/
 
-char *addextn (char *fname, char *extn, char *outbuf)
+char *addextn (const char *fname, const char *extn, char *outbuf)
 {
     char *buf, line[500], *c;
 
@@ -1450,27 +1449,27 @@ char *addextn (char *fname, char *extn, char *outbuf)
 
 BOOL controlcard (char *line)
 {
-    if (strnicmp(line, "*LIST", 5) == 0) {      /* turn on listing file even if not specified on command line */
+    if (strncasecmp(line, "*LIST", 5) == 0) {   /* turn on listing file even if not specified on command line */
         do_list = list_on = TRUE;
         return TRUE;
     }
     
-    if (strnicmp(line, "*XREF", 5) == 0) {
+    if (strncasecmp(line, "*XREF", 5) == 0) {
         do_xref = TRUE;
         return TRUE;
     }
 
-    if (strnicmp(line, "*PRINT SYMBOL TABLE", 19) == 0) {
+    if (strncasecmp(line, "*PRINT SYMBOL TABLE", 19) == 0) {
         do_syms = TRUE;
         return TRUE;
     }
 
-    if (strnicmp(line, "*SAVE SYMBOL TABLE", 18) == 0) {
+    if (strncasecmp(line, "*SAVE SYMBOL TABLE", 18) == 0) {
         savetable = TRUE;
         return TRUE;
     }
 
-    if (strnicmp(line, "*SYSTEM SYMBOL TABLE", 20) == 0) {
+    if (strncasecmp(line, "*SYSTEM SYMBOL TABLE", 20) == 0) {
         preload = TRUE;
         preload_symbols();
         return TRUE;
@@ -1483,7 +1482,7 @@ BOOL controlcard (char *line)
  * stuff - insert characters into a line
  ********************************************************************************************/
 
-void stuff (char *buf, char *tok, int maxchars)
+void stuff (char *buf, const char *tok, int maxchars)
 {
     while (*tok) {
         *buf++ = *tok++;
@@ -1498,14 +1497,14 @@ void stuff (char *buf, char *tok, int maxchars)
  * format_line - construct a source code input line from components
  ********************************************************************************************/
 
-void format_line (char *buf, char *label, char *op, char *mods, char *args, char *remarks)
+void format_line (char *buf, char *label, char *op, char *mods, char *args, const char *remarks)
 {
-    int i;
-
     if (tabformat) {
         sprintf(buf, "%s\t%s\t%s\t%s\t%s", label, op, mods, args, remarks);
     }
     else {
+        size_t i;
+
         for (i = 0; i < 72; i++)
             buf[i] = ' ';
         buf[i] = '\0';
@@ -1521,12 +1520,13 @@ void format_line (char *buf, char *label, char *op, char *mods, char *args, char
  * lookup_op - find an opcode
  ********************************************************************************************/
 
-struct tag_op * lookup_op (char *mnem)
+struct tag_op * lookup_op (const char *mnem)
 {
     struct tag_op *op;
-    int i;
 
     for (op = ops; op->mnem != NULL; op++) {
+        int i;
+
         if ((i = strcmp(op->mnem, mnem)) == 0)
             return op;
 
@@ -1602,7 +1602,7 @@ void bincard_writecard (char *sbrk_text)
         }
     }
 
-    sprintf(ident, "%08ld", ++bincard_seq);         /* append sequence text */
+    sprintf(ident, "%08d", ++bincard_seq);          /* append sequence text */
     memmove(ident, progname, MIN(strlen(progname), 4));
 
     for (i = 0; i < 8; i++)
@@ -1798,7 +1798,7 @@ void writetwo (void)
  * This was not part of the 1130 assembler; they must have assembled DMS on a 360 using a cross assembler
  ********************************************************************************************/
 
-void handle_sbrk (char *line)
+void handle_sbrk (const char *line)
 {
     char rline[90];
 
@@ -1827,7 +1827,7 @@ void handle_sbrk (char *line)
  * namecode - turn a string into a two-word packed name
  ********************************************************************************************/
 
-void namecode (unsigned short *words, char *tok)
+void namecode (unsigned short *words, const char *tok)
 {
     long val = 0;
     int i, ch;
@@ -1862,7 +1862,7 @@ void parse_line (char *line)
             if (! controlcard(line))
                 check_control = FALSE;          /* first non-control card shuts off sensitivity to them */
 
-        if (strnicmp(line+1, "SBRK", 4) == 0)
+        if (strncasecmp(line+1, "SBRK", 4) == 0)
             handle_sbrk(line);
 
         return;
@@ -1952,15 +1952,13 @@ void parse_line (char *line)
 
 BOOL get_line (char *buf, int nbuf, BOOL onelevel)
 {
-    char *retval;
-
     if (ended)                              /* we hit the END command */
         return FALSE;
     
     /* if macro active, return line from macro buffer, otherwise read from file */
     /* do not pop end-of-macro if onelevel is TRUE  */
 
-    if ((retval = fgets(buf, nbuf, fin)) == NULL)
+    if (fgets(buf, nbuf, fin) == NULL)
         return FALSE;
 
     lno++;                                  /* count the line */
@@ -1974,7 +1972,6 @@ BOOL get_line (char *buf, int nbuf, BOOL onelevel)
 void proc (char *fname)
 {                                                                                                                   
     char line[256], *c;
-    int i;
 
     if (strchr(fname, '.') == NULL)             /* if input file has no extension, */
         addextn(fname, ".asm", curfn);          /* set appropriate file extension */
@@ -2007,12 +2004,14 @@ void proc (char *fname)
     if (verbose)
         fprintf(stderr, "--- Starting file %s pass %d\n", curfn, pass);
 
-    if ((fin = fopen(curfn, "r")) == NULL) {
+    if ((fin = util_fopen(curfn, "r")) == NULL) {
         perror(curfn);                          /* oops */
         exit(1);
     }
 
     if (flist) {                                /* put banner in listing file */
+        int i;
+
         strcpy(listline,"=== FILE ======================================================================");
         for (i = 9, c = curfn; *c;)
             listline[i++] = *c++;
@@ -2086,7 +2085,7 @@ int opcmp (const void *a, const void *b)
 void preload_symbols (void)
 {
     FILE *fd;
-    char str[200], sym[20];
+    char str[200];
     int v;
     static BOOL preloaded_already = FALSE;
 
@@ -2095,10 +2094,12 @@ void preload_symbols (void)
 
     preloaded_already = TRUE;
 
-    if ((fd = fopen(SYSTEM_TABLE, "r")) == NULL)                /* read the system symbol tabl */
+    if ((fd = util_fopen(SYSTEM_TABLE, "r")) == NULL)           /* read the system symbol tabl */
         perror(SYSTEM_TABLE);
     else {
         while (fgets(str, sizeof(str), fd) != NULL) {
+            char sym[20];
+
             if (sscanf(str, "%s %x", sym, &v) == 2)
                 set_symbol(sym, v, TRUE, FALSE);
         }
@@ -2113,7 +2114,6 @@ void preload_symbols (void)
 void save_symbols (void)
 {
     FILE *fd;
-    char str[20];
     PSYMBOL s;
 
     if (relocate) {
@@ -2121,18 +2121,21 @@ void save_symbols (void)
         return;
     }
 
-    if ((fd = fopen(SYSTEM_TABLE, "r")) != NULL) {
+    if ((fd = util_fopen(SYSTEM_TABLE, "r")) != NULL) {
         fclose(fd);
         if (saveprompt) {
+            char str[20];
+
             printf("Overwrite system symbol table %s? ", SYSTEM_TABLE);
-            fgets(str, sizeof(str), stdin);
+            if (fgets(str, sizeof(str), stdin) == NULL)
+                return;
             if (str[0] != 'y' && str[0] != 'Y')
                 return;
         }
         unlink(SYSTEM_TABLE);
     }
 
-    if ((fd = fopen(SYSTEM_TABLE, "w")) == NULL) {
+    if ((fd = util_fopen(SYSTEM_TABLE, "w")) == NULL) {
         perror(SYSTEM_TABLE);
         return;
     }
@@ -2177,13 +2180,13 @@ void startpass (int n)
         if (outfn == NULL)
             outfn = addextn(curfn, (outmode == OUTMODE_LOAD) ? ".out" : ".bin" , NULL);
 
-        if ((fout = fopen(outfn, OUTWRITEMODE)) == NULL) {              /* open output file */
+        if ((fout = util_fopen(outfn, OUTWRITEMODE)) == NULL) {         /* open output file */
             perror(outfn);
             exit(1);
         }
 
         if (do_list) {                                                  /* open listing file */
-            if ((flist = fopen(listfn, "w")) == NULL) {
+            if ((flist = util_fopen(listfn, "w")) == NULL) {
                 perror(listfn);
                 exit(1);
             }
@@ -2939,7 +2942,7 @@ void x_file (struct tag_op *op, char *label, char *mods, char *arg)
         arg = NULL;         /* for next strtok call */
 
         if (i == 3) {
-            if (strcmpi(tok, "U") != 0)
+            if (strcasecmp(tok, "U") != 0)
                 asm_error("Argument 4 must be the letter U");
         }
         else if (getexpr(tok, FALSE, &vals[i]) == S_DEFINED) {
@@ -3411,9 +3414,9 @@ void x_list (struct tag_op *op, char *label, char *mods, char *arg)
         return;
     }
 
-    if (strcmpi(arg, "ON") == 0)
+    if (strcasecmp(arg, "ON") == 0)
         on = TRUE;
-    else if (strcmpi(arg, "OFF") == 0)
+    else if (strcasecmp(arg, "OFF") == 0)
         on = FALSE;
     else
         on = do_list;
@@ -4048,9 +4051,9 @@ void output_literals (BOOL eof)
 
     for (i = 0; i < n_literals; i++) {          /* generate DC statements for any pending literal constants */
         if (literal[i].even && literal[i].hex)              /* create the value string */
-            sprintf(num, "/%08lX", literal[i].value);
+            sprintf(num, "/%08X", literal[i].value);
         else if (literal[i].even)
-            sprintf(num, "%ld",    literal[i].value);
+            sprintf(num, "%d",    literal[i].value);
         else if (literal[i].hex)
             sprintf(num, "/%04X",  literal[i].value & 0xFFFF);
         else
@@ -4061,7 +4064,7 @@ void output_literals (BOOL eof)
 
         if (eof) {
             eof = FALSE;                            /* at end of file, for first literal, only prepare blank line */
-            sprintf(listline, LEFT_MARGIN, org);
+            sprintf(listline, LEFT_MARGIN);
         }
         else
             listout(TRUE);                          /* push out any pending line(s) */
@@ -4643,59 +4646,4 @@ char *detab (char *instr)
 
     return outstr;
 }
-
-#ifndef _WIN32
-
-/********************************************************************************************
- * routines provided by Microsoft C but not others
- ********************************************************************************************/
-
-int strnicmp (char *a, char *b, int n)
-{
-    int ca, cb;
-
-    for (;;) {
-        if (--n < 0)                    /* still equal after n characters? quit now */
-            return 0;
-
-        if ((ca = *a) == 0)             /* get character, stop on null terminator */
-            return *b ? -1 : 0;
-
-        if (ca >= 'a' && ca <= 'z')     /* fold lowercase to uppercase */
-            ca -= 32;
-
-        cb = *b;
-        if (cb >= 'a' && cb <= 'z')
-            cb -= 32;
-
-        if ((ca -= cb) != 0)            /* if different, return comparison */
-            return ca;
-
-        a++, b++;
-    }
-}
-
-int strcmpi (char *a, char *b)
-{
-    int ca, cb;
-
-    for (;;) {
-        if ((ca = *a) == 0)             /* get character, stop on null terminator */
-            return *b ? -1 : 0;
-
-        if (ca >= 'a' && ca <= 'z')     /* fold lowercase to uppercase */
-            ca -= 32;
-
-        cb = *b;
-        if (cb >= 'a' && cb <= 'z')
-            cb -= 32;
-
-        if ((ca -= cb) != 0)            /* if different, return comparison */
-            return ca;
-
-        a++, b++;
-    }
-}
-
-#endif
 

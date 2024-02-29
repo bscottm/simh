@@ -52,15 +52,15 @@
 #include <ctype.h>
 #include "util_io.h"
 
+#if defined(_WIN32)
+#  define strcasecmp  _stricmp
+#  define strncasecmp _strnicmp
+#endif
+
 #ifndef TRUE
     #define BOOL  int
     #define TRUE  1
     #define FALSE 0
-#endif
-
-#ifndef _WIN32
-    int strnicmp (char *a, char *b, int n);
-    int strcmpi (char *a, char *b);
 #endif
 
 #define BETWEEN(v,a,b) (((v) >= (a)) && ((v) <= (b)))
@@ -142,19 +142,19 @@ int main (int argc, char **argv)
                 case 2:
                     if       (strcmp(arg, "1130")  == 0) mode = B_1130;
                     else if  (strcmp(arg, "1800")  == 0) mode = B_1800;
-                    else if  (strcmpi(arg, "core") == 0) mode = B_CORE;
+                    else if  (strcasecmp(arg, "core") == 0) mode = B_CORE;
                     else bail(usestr);
                     break;
 
                 case 3:
-                    if (strnicmp(arg, "0x", 2) == 0) ok = sscanf(arg+2, "%x", &addr_from);
+                    if (strncasecmp(arg, "0x", 2) == 0) ok = sscanf(arg+2, "%x", &addr_from);
                     else if (arg[0] == '/')          ok = sscanf(arg+1, "%x", &addr_from);
                     else                             ok = sscanf(arg,   "%d", &addr_from);
                     if (ok != 1) bail(usestr);
                     break;
 
                 case 4:
-                    if (strnicmp(arg, "0x", 2) == 0) ok = sscanf(arg+2, "%x", &addr_to);
+                    if (strncasecmp(arg, "0x", 2) == 0) ok = sscanf(arg+2, "%x", &addr_to);
                     else if (arg[0] == '/')          ok = sscanf(arg+1, "%x", &addr_to);
                     else                             ok = sscanf(arg,   "%d", &addr_to);
                     if (ok != 1) bail(usestr);
@@ -197,7 +197,7 @@ void write_1130 (void)
     int addr;
     unsigned short word;
 
-    if ((fout = fopen(outfile, "wb")) == NULL) {
+    if ((fout = util_fopen(outfile, "wb")) == NULL) {
         perror(outfile);
         exit(1);
     }
@@ -227,7 +227,7 @@ void write_1800 (void)
     int addr;
     unsigned short word;
 
-    if ((fout = fopen(outfile, "wb")) == NULL) {
+    if ((fout = util_fopen(outfile, "wb")) == NULL) {
         perror(outfile);
         exit(1);
     }
@@ -254,7 +254,7 @@ void write_core (void)
 {
     int addr;
 
-    if ((fout = fopen(outfile, "wb")) == NULL) {
+    if ((fout = util_fopen(outfile, "wb")) == NULL) {
         perror(outfile);
         exit(1);
     }
@@ -368,7 +368,7 @@ void loaddata (char *fname)
     BOOL first = TRUE;
     unsigned short card[80], buf[54], cardtype;
 
-    if ((fp = fopen(fname, "rb")) == NULL) {
+    if ((fp = util_fopen(fname, "rb")) == NULL) {
         perror(fname);
         exit(1);
     }
@@ -653,54 +653,3 @@ char *upcase (char *str)
 
     return str;
 }
-
-#ifndef _WIN32
-
-int strnicmp (char *a, char *b, int n)
-{
-    int ca, cb;
-
-    for (;;) {
-        if (--n < 0)                    // still equal after n characters? quit now
-            return 0;
-
-        if ((ca = *a) == 0)             // get character, stop on null terminator
-            return *b ? -1 : 0;
-
-        if (ca >= 'a' && ca <= 'z')     // fold lowercase to uppercase
-            ca -= 32;
-
-        cb = *b;
-        if (cb >= 'a' && cb <= 'z')
-            cb -= 32;
-
-        if ((ca -= cb) != 0)            // if different, return comparison
-            return ca;
-
-        a++, b++;
-    }
-}
-
-int strcmpi (char *a, char *b)
-{
-    int ca, cb;
-
-    for (;;) {
-        if ((ca = *a) == 0)             // get character, stop on null terminator
-            return *b ? -1 : 0;
-
-        if (ca >= 'a' && ca <= 'z')     // fold lowercase to uppercase
-            ca -= 32;
-
-        cb = *b;
-        if (cb >= 'a' && cb <= 'z')
-            cb -= 32;
-
-        if ((ca -= cb) != 0)            // if different, return comparison
-            return ca;
-
-        a++, b++;
-    }
-}
-
-#endif

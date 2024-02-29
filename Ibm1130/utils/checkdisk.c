@@ -65,7 +65,9 @@ char *lowcase (char *str);
 int main (int argc, char **argv)
 {
     FILE *fp;
-    char *fname = NULL, *arg, *argval;
+    char *arg;
+    const char *fname = NULL;
+    const char *argval;
     int i, j, cyl, sec, pos, asec, retry, nbad = 0, nfixed = 0, nline;
     BOOL fixit = FALSE, dump = FALSE;
     int dsec, nsec = 1;
@@ -130,7 +132,7 @@ int main (int argc, char **argv)
     if (fname == NULL)
         bail(usestr);
 
-    if ((fp = fopen(fname, "rb+")) == NULL) {
+    if ((fp = util_fopen(fname, "rb+")) == NULL) {
         perror(fname);
         return 1;
     }
