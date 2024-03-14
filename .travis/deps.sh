@@ -2,7 +2,7 @@
 
 install_osx() {
     brew update
-    brew install pkg-config pcre libpng libedit sdl2 freetype2 sdl2_ttf \
+    brew install pkg-config pcre zlib libpng libedit sdl2 freetype2 sdl2_ttf \
         vde cmake gnu-getopt coreutils
 }
 

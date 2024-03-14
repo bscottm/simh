@@ -43,9 +43,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-12, macos-11]
+        os: [macos-14, macos-13, macos-12]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     ## Workaround for remnant symlinks in /usr/local pointing back to
     ## macOS frameworks.
     ##
@@ -88,32 +88,6 @@ jobs:
       with:
         name: simh-4.1.0-x86_64.${{matrix.os}}.dmg
         path: cmake/build-xcode/simh-4.1.0-x86_64.${{matrix.os}}.dmg
-
-
-  ## This looks like it's doing the right thing on the Github CI/CD pipeline because
-  ## the output contains references to x86_64 and arm64 targets for Mac OS 12.
-  ##
-  ## However, need to figure out how to concurrently install BOTH arm64 and intel
-  ## Homebrews AND how to tell SDL2 which set of header files it should use for
-  ## platform-specific assembly (/usr/local vs. /opt/local.)
-  ##
-  # cmake-macOS-universal:
-  #   name: macOS universal
-  #   runs-on: ${{ matrix.os }}
-  #   strategy:
-  #     matrix:
-  #       os: [macos-12]
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - name: Install dependencies
-  #     run: |
-  #       sh -ex .travis/deps.sh osx
-  #   - name: cmake-builder.sh
-  #     run: |
-  #       cmake/cmake-builder.sh --config Release --flavor xcode-universal --lto --notest
-  #   - name: SIMH simulator suite test
-  #     run: |
-  #       cmake/cmake-builder.sh --config Release --flavor xcode-universal --testonly
 
 
   cmake-vs2022xp:
