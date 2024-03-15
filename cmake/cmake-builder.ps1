@@ -245,6 +245,13 @@ if ($help)
     Show-Help
 }
 
+## "-verbose" is actually a PowerShell flag. But we can test for it's
+## presence...
+$verboseFlag = $PSBoundParameters['Verbose']
+if ($verboseFlag) {
+    $env:VERBOSE="true"
+}
+
 ### CTest params:
 ## timeout is 180 seconds
 $ctestTimeout  = "300"
@@ -474,15 +481,15 @@ if (($scriptPhases -contains "generate") -or ($scriptPhases -contains "build"))
     $buildArgs     =  @("--build", "${buildDir}", "--config", "${config}")
     if ($parallel)
     {
-      $buildArgs += "--parallel"
+      $buildArgs += @("--parallel")
     }
-    if ($verbose)
+    if ($verboseFlag)
     {
-      $buildArgs += "--verbose"
+      $buildArgs += @("--verbose")
     }
     if ($windeprecation)
     {
-        $buildArgs += "-DWINAPI_DEPRECATION:Bool=TRUE"
+        $buildArgs += @("-DWINAPI_DEPRECATION:Bool=TRUE")
     }
     if (![String]::IsNullOrEmpty($target)) {
         foreach ($targ in $target) {
@@ -538,7 +545,7 @@ foreach ($phase in $scriptPhases) {
             ##     $testArgs += @("--parallel", $ctestParallel)
             ## }
 
-            if ($verbose)
+            if ($verboseFlag)
             {
                 $testArgs += @("--verbose")
             }

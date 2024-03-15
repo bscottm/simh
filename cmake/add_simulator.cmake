@@ -24,7 +24,7 @@ add_custom_target(update_sim_commit ALL
 ## Simulator sources and library:
 set(SIM_SOURCES
     ${CMAKE_SOURCE_DIR}/scp.c
-    ${CMAKE_SOURCE_DIR}/sim_debtab.c
+    ${CMAKE_SOURCE_DIR}/sim_main.c
     ${CMAKE_SOURCE_DIR}/sim_card.c
     ${CMAKE_SOURCE_DIR}/sim_console.c
     ${CMAKE_SOURCE_DIR}/sim_disk.c
@@ -41,8 +41,7 @@ set(SIM_SOURCES
     ${CMAKE_SOURCE_DIR}/sim_debtab.c)
 
 set(SIM_VIDEO_SOURCES
-    ${CMAKE_SOURCE_DIR}/display/display.c
-    ${CMAKE_SOURCE_DIR}/display/sim_ws.c)
+    ${CMAKE_SOURCE_DIR}/display/display.c)
 
 if (WITH_NETWORK AND WITH_SLIRP)
     list(APPEND SIM_SOURCES
@@ -122,15 +121,6 @@ function(build_simcore _targ)
                 # It's the video library
                 target_sources(${lib} PRIVATE ${SIM_VIDEO_SOURCES})
                 target_link_libraries(${lib} PUBLIC simh_video)
-            endif ()
-            if (CMAKE_HOST_APPLE AND NOT SIMH_BESM6_SDL_HACK)
-                ## (a) The BESM6 SDL hack is temporary. If SDL_MAIN_AVAILABLE needs
-                ##     to be defined, it belongs in the simh_video interface library.
-                ## (b) BESM6 doesn't use SIMH's video capabilities correctly and
-                ##     the makefile filters out SDL_MAIN_AVAILABLE on macOS.
-                ## (c) This shouldn't be just an Apple platform quirk; SDL_main should
-                ##     be used by all platforms. <sigh!>
-                target_compile_definitions("${lib}" PUBLIC SDL_MAIN_AVAILABLE)
             endif ()
         endif ()
 

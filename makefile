@@ -592,6 +592,7 @@ ifeq (${WIN32},)  #*nix Environments (&& cygwin)
     ifneq (,$(call find_lib,pthread))
       AIO_CCDEFS += -DUSE_READER_THREAD -DSIM_ASYNCH_IO
       SYS_LDFLAGS += -lpthread
+      OS_CCDEFS += -DHAVE_PTHREADS
       $(info using libpthread: $(call find_lib,pthread) $(call find_include,pthread))
     else
       LIBEXTSAVE := ${LIBEXT}
@@ -599,15 +600,19 @@ ifeq (${WIN32},)  #*nix Environments (&& cygwin)
       ifneq (,$(call find_lib,pthread))
         AIO_CCDEFS += -DUSE_READER_THREAD -DSIM_ASYNCH_IO
         SYS_LDFLAGS += -lpthread
+        OS_CCDEFS += -DHAVE_PTHREADS
         $(info using libpthread: $(call find_lib,pthread) $(call find_include,pthread))
       else
         ifneq (,$(findstring Haiku,$(OSTYPE)))
-          AIO_CCDEFS += -DUSE_READER_THREAD -DSIM_ASYNCH_IO
+          AIO_CCDEFS += -DUSE_READER_THREAD -DSIM_ASYNCH_IO 
+          OS_CCDEFS += -DHAVE_PTHREADS
           $(info using libpthread: $(call find_include,pthread))
         else
           ifeq (Darwin,$(OSTYPE))
             AIO_CCDEFS += -DUSE_READER_THREAD -DSIM_ASYNCH_IO
             SYS_LDFLAGS += -lpthread
+            OS_CCDEFS += -DHAVE_PTHREADS
+            OS_LDFLAGS += -lpthread
             $(info using macOS libpthread: $(call find_include,pthread))
           endif
         endif
@@ -751,7 +756,7 @@ ifeq (${WIN32},)  #*nix Environments (&& cygwin)
           VIDEO_CCDEFS += -DHAVE_LIBSDL -DUSE_SIM_VIDEO $(shell $(SDLX_CONFIG) --cflags)
           VIDEO_LDFLAGS += $(shell $(SDLX_CONFIG) --libs)
           VIDEO_FEATURES = - video capabilities provided by libSDL2 (Simple Directmedia Layer)
-          DISPLAYL = ${DISPLAYD}/display.c $(DISPLAYD)/sim_ws.c
+          DISPLAYL = ${DISPLAYD}/display.c
           DISPLAYVT = ${DISPLAYD}/vt11.c
           DISPLAY340 = ${DISPLAYD}/type340.c
           DISPLAYNG = ${DISPLAYD}/ng.c
@@ -1203,11 +1208,13 @@ else
   ifneq (,$(call find_include,pthread))
     PTHREADS_CCDEFS =
     AIO_CCDEFS = -DUSE_READER_THREAD -DSIM_ASYNCH_IO
+    OS_CCDEFS += -DHAVE_PTHREADS
     PTHREADS_LDFLAGS = -lpthread
   else
     ifeq (pthreads,$(shell if exist ..\windows-build\pthreads\Pre-built.2\include\pthread.h echo pthreads))
       PTHREADS_CCDEFS = -DPTW32_STATIC_LIB -D_POSIX_C_SOURCE -I../windows-build/pthreads/Pre-built.2/include
       AIO_CCDEFS = -DUSE_READER_THREAD -DSIM_ASYNCH_IO
+      OS_CCDEFS += -DHAVE_PTHREADS
       PTHREADS_LDFLAGS = -lpthreadGC2 -L..\windows-build\pthreads\Pre-built.2\lib
     endif
   endif
@@ -1234,7 +1241,7 @@ else
         VIDEO_LDFLAGS  += $(abspath $(dir $(SDL_INCLUDE))\..\..\..\lib\lib-VC2008\Release)/SDL2.lib
       endif
       VIDEO_FEATURES = - video capabilities provided by libSDL2 (Simple Directmedia Layer)
-      DISPLAYL = ${DISPLAYD}/display.c $(DISPLAYD)/sim_ws.c
+      DISPLAYL = ${DISPLAYD}/display.c
       DISPLAYVT = ${DISPLAYD}/vt11.c
       DISPLAY340 = ${DISPLAYD}/type340.c
       DISPLAYNG = ${DISPLAYD}/ng.c
@@ -1492,7 +1499,7 @@ LDFLAGS := $(strip ${OS_LDFLAGS} ${LDFLAGS_O} ${SYS_LDFLAGS})
 #
 # Common Libraries
 #
-SIM = ${SIMHD}/scp.c ${SIMHD}/sim_console.c ${SIMHD}/sim_fio.c \
+SIM = ${SIMHD}/scp.c ${SIMHD}/sim_main.c ${SIMHD}/sim_console.c ${SIMHD}/sim_fio.c \
 	${SIMHD}/sim_timer.c ${SIMHD}/sim_sock.c ${SIMHD}/sim_tmxr.c \
 	${SIMHD}/sim_ether.c ${SIMHD}/sim_tape.c ${SIMHD}/sim_disk.c \
 	${SIMHD}/sim_serial.c ${SIMHD}/sim_video.c ${SIMHD}/sim_imd.c \
