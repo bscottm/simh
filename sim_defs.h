@@ -153,10 +153,16 @@ extern int sim_vax_snprintf(char *buf, size_t buf_size, const char *fmt, ...);
 #include <winsock2.h>
 #include <windows.h>
 #include <winerror.h>
+#include <ws2tcpip.h>
 #undef PACKED                       /* avoid macro name collision */
 #undef ERROR                        /* avoid macro name collision */
 #undef MEM_MAPPED                   /* avoid macro name collision */
 #include <process.h>
+
+#if defined(_MSC_VER)
+/* Disable unreferenced formal parameter warnings (4100) */
+#pragma warning(disable: 4100)
+#endif
 #endif
 
 #include "sim_printf_fmts.h"
@@ -347,7 +353,11 @@ typedef uint32          t_addr;
 #else
 # define PACKED_BEGIN
 #if defined(_WIN32)
-# define PACKED_END __attribute__((gcc_struct, packed))
+#  if !defined(__clang__)
+#    define PACKED_END __attribute__((gcc_struct, packed))
+#  else
+#    define PACKED_END __attribute__((packed))
+#  endif
 #else
 # define PACKED_END __attribute__((packed))
 #endif
@@ -1212,6 +1222,7 @@ extern int32 sim_tmxr_poll_count;
 extern pthread_cond_t sim_tmxr_poll_cond;
 extern pthread_mutex_t sim_tmxr_poll_lock;
 extern pthread_t sim_asynch_main_threadid;
+extern pthread_mutex_t sim_debug_lock;
 extern UNIT * volatile sim_asynch_queue;
 extern volatile t_bool sim_idle_wait;
 extern int32 sim_asynch_latency;
@@ -1262,8 +1273,9 @@ extern pthread_mutex_t sim_debug_io_lock;
 
 #define AIO_LOCK                                                \
     pthread_mutex_lock(&sim_asynch_lock)
-#define AIO_UNLOCK                                                \
-    pthread_mutex_unlock(&sim_asynch_lock)
+#define AIO_UNLOCK pthread_mutex_unlock(&sim_asynch_lock)
+#define AIO_DEBUG_LOCK   pthread_mutex_lock(&sim_debug_lock)
+#define AIO_DEBUG_UNLOCK pthread_mutex_unlock(&sim_debug_lock)
 #define AIO_IS_ACTIVE(uptr) (((uptr)->a_is_active ? (uptr)->a_is_active (uptr) : FALSE) || ((uptr)->a_next))
 
 #if defined(SIM_ASYNCH_MUX)
@@ -1491,6 +1503,8 @@ static SIM_INLINE void sim_do_check_event()
 #define AIO_MAIN_THREAD TRUE
 #define AIO_LOCK
 #define AIO_UNLOCK
+#define AIO_DEBUG_LOCK
+#define AIO_DEBUG_UNLOCK
 #define AIO_CLEANUP
 #define AIO_EVENT_BEGIN(uptr)
 #define AIO_EVENT_COMPLETE(uptr, reason)
@@ -1552,6 +1566,9 @@ static SIM_INLINE void AIO_SET_INTERRUPT_LATENCY(uint32 instpersec)
     sim_asynch_latency = (inst_latency >= 1.0) ? (int32) inst_latency : 1;
 #endif
 }
+
+/* Unused argument macro */
+#define SIM_UNUSED_ARG(arg) (void ) (arg);
 
 #ifdef  __cplusplus
 }
