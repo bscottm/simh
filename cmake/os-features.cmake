@@ -241,6 +241,11 @@ target_compile_definitions(os_features INTERFACE
 if (WIN32)
     target_link_libraries(os_features INTERFACE ws2_32 wsock32 winmm)
     target_compile_definitions(os_features INTERFACE HAVE_WINMM)
+
+    if (OPENVPN_TUNTAP)
+        target_link_libraries(os_features INTERFACE setupapi)
+    endif ()
+
     if (NOT WINAPI_DEPRECATION)
         target_compile_definitions(os_features INTERFACE
             _CRT_NONSTDC_NO_WARNINGS

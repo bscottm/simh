@@ -82,6 +82,57 @@ extern "C" {
 #define USE_SETNONBLOCK 1
 #endif
 
+#if (defined (xBSD) || defined (__APPLE__)) && (defined (HAVE_TAP_NETWORK) || defined (HAVE_PCAP_NETWORK))
+#include <sys/ioctl.h>
+#include <net/bpf.h>
+#endif
+
+#if defined (HAVE_PCAP_NETWORK)
+/*============================================================================*/
+/*      WIN32, Linux, and xBSD routines use WinPcap and libpcap packages      */
+/*        OpenVMS Alpha uses a WinPcap port and an associated execlet         */
+/*============================================================================*/
+
+#include <pcap.h>
+#include <string.h>
+#else
+struct pcap_pkthdr {
+    uint32 caplen;  /* length of portion present */
+    uint32 len;     /* length this packet (off wire) */
+};
+#define PCAP_ERRBUF_SIZE 256
+typedef void * pcap_t;  /* Pseudo Type to avoid compiler errors */
+#define DLT_EN10MB 1    /* Dummy Value to avoid compiler errors */
+#endif /* HAVE_PCAP_NETWORK */
+
+#ifdef HAVE_TAP_NETWORK
+#if defined(__linux) || defined(__linux__)
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <linux/if_tun.h>
+#elif defined(HAVE_BSDTUNTAP)
+#include <sys/types.h>
+#include <net/if_types.h>
+#include <net/if.h>
+#else /* We don't know how to do this on the current platform */
+#undef HAVE_TAP_NETWORK
+#endif
+#endif /* HAVE_TAP_NETWORK */
+
+#ifdef HAVE_VDE_NETWORK
+#ifdef  __cplusplus
+extern "C" {
+#endif
+#include <libvdeplug.h>
+#ifdef  __cplusplus
+}
+#endif
+#endif /* HAVE_VDE_NETWORK */
+
+#ifdef HAVE_SLIRP_NETWORK
+#include "sim_slirp.h"
+#endif /* HAVE_SLIRP_NETWORK */
+
 /* cygwin doesn't have the right features to use the threaded network I/O */
 #if defined(__CYGWIN__) || defined(__ZAURUS__) // psco added check for Zaurus platform
 #define DONT_USE_READER_THREAD
@@ -109,16 +160,18 @@ extern "C" {
 
 /* set related values to have correct relationships */
 #if defined (USE_READER_THREAD)
-#include "sim_atomic.h"
-#include <pthread.h>
-#if defined (USE_SETNONBLOCK)
-#undef USE_SETNONBLOCK
-#endif /* USE_SETNONBLOCK */
-#undef PCAP_READ_TIMEOUT
-#define PCAP_READ_TIMEOUT 15
-#if (!defined (xBSD) && !defined(_WIN32) && !defined(VMS) && !defined(__CYGWIN__)) || defined (HAVE_TAP_NETWORK) || defined (HAVE_VDE_NETWORK)
-#define MUST_DO_SELECT 1
-#endif
+#  include "sim_atomic.h"
+#  include <pthread.h>
+#  if defined (USE_SETNONBLOCK)
+#    undef USE_SETNONBLOCK
+#  endif /* USE_SETNONBLOCK */
+#  undef PCAP_READ_TIMEOUT
+#  define PCAP_READ_TIMEOUT 15
+#  if (!defined (xBSD) && !defined(_WIN32) && !defined(_WIN64) && !defined(VMS) && !defined(__CYGWIN__)) || \
+       defined (HAVE_TAP_NETWORK) || \
+       defined (HAVE_VDE_NETWORK)
+#    define MUST_DO_SELECT 1
+#  endif
 
 /* Reader, writer thread states */
 typedef enum {
@@ -243,6 +296,15 @@ struct eth_list {
   char    name[ETH_DEV_NAME_MAX];
   char    desc[ETH_DEV_DESC_MAX];
   int     eth_api;
+
+  /* Additional metadata about the device. */
+
+#if defined(WITH_OPENVPN_TAPTUN)
+  /* Adapter GUID. This forms part of the path name use to open the
+   * TAP device. */
+  int     is_openvpn;
+  GUID    adapter_guid;
+#endif
 };
 
 typedef int ETH_BOOL;
@@ -258,16 +320,83 @@ struct eth_write_request {
   };
 typedef struct eth_write_request ETH_WRITE_REQUEST;
 
-/* The Ethernet device: */
-
 typedef struct eth_device  ETH_DEV;
 
+/* Union for all of the Ethernet API types: */
+typedef union {
+#if defined(HAVE_PCAP_NETWORK)
+  /* Windows: pcap_sendpacket() is very likely to return a non-zero
+   * return value, even though the packet has (allegedly) been sent.
+   * This behavior tends to show up on WiFi interfaces. Oddly, you
+   * will see the packet show up in WireShark on the WiFi interface.
+   * 
+   * Use the npcap send queues to send the data instead. The upside
+   * of using the queues is that we can also drain the simulator's
+   * Ethernet interface and then flush the queue.
+   */
+  struct {
+    pcap_t *handle;
+
+#  if defined(_WIN32) || defined(_WIN64)
+    pcap_send_queue *sendq;
+    /* pcap_sendqueue_queue() returns the running tally of octets
+     * sent (packet length + pcap packet header). */
+    u_int xmitted;
+    /* Number of bytes queued so far. */
+#  endif
+  } pcap;
+#endif
+
+#if defined(HAVE_SLIRP_NETWORK)
+  SimSlirpNetwork *libslirp;
+#endif
+
+#if defined(HAVE_VDE_NETWORK)
+  struct {
+    VDECONN *vde_conn;
+    int vde_sock;
+  } vde;
+#endif
+
+#if defined(HAVE_TAP_NETWORK)
+  SOCKET tap_sock;
+#endif
+
+#if defined(WITH_OPENVPN_TAPTUN)
+  HANDLE openvpn_dev;
+#endif
+
+  SOCKET udp_sock;
+} eth_apidata_t;
+
+/* API functions: */
+typedef struct {
+  /* reader(): Ethernet receiver-specific read function. Typically, a
+   * reader function invokes poll()/select(), and dispatches a packet
+   * if data is available from the underlying socket.
+   * 
+   * Note: The underlying reader code should compile for both the
+   * USE_READER_THREAD (AIO) and single threaded paths. */
+  int (*reader)(ETH_DEV *eth_dev, int ms_timeout);
+
+  /*  writer(): Ethernet sender-specific write function. */
+  int (*writer)(ETH_DEV *eth_dev, ETH_PACK *packet);
+  
+#if defined(USE_READER_THREAD)
+  /* reader_shutdown(), writer_shutdown(): Ethernet device-specific shutdown
+   * function. Used by libslirp support to signal the condition variable if
+   * waiting for sockets. Otherwise, a NOP for other Ethernet devices. */
+  void (*reader_shutdown)(eth_apidata_t *api_data);
+  void (*writer_shutdown)(eth_apidata_t *api_data);
+#endif
+} eth_apifuncs_t;
+
+/* The Ethernet device: */
 struct eth_device {
   char*         name;                                   /* name of ethernet device */
-  void*         handle;                                 /* handle of implementation-specific device */
-  SOCKET        fd_handle;                              /* fd to kernel device (where needed) */
-  char*         bpf_filter;                             /* bpf filter currently in effect */
   int           eth_api;                                /* Designator for which API is being used to move packets */
+  eth_apidata_t api_data;                               /* Ethernet API data -- see union above. */
+  char*         bpf_filter;                             /* bpf filter currently in effect */
 #define ETH_API_NONE 0                                  /* No API in use yet */
 #define ETH_API_PCAP 1                                  /* Pcap API in use */
 #define ETH_API_TAP  2                                  /* tun/tap API in use */
@@ -319,6 +448,11 @@ struct eth_device {
   uint32        throttle_events;                        /* keeps track of packet arrival values */
   uint32        throttle_packet_time;                   /* time last packet was transmitted */
   uint32        throttle_count;                         /* Total Throttle Delays */
+
+  /* Augmented debugging table and bitmasks: */
+  DEBTAB   *original_debflags;
+  size_t    flag_offset;
+
 #if defined (USE_READER_THREAD)
   int                 asynch_io;                        /* Asynchronous Interrupt scheduling enabled */
   int                 asynch_io_latency;                /* instructions to delay pending interrupt */
@@ -350,18 +484,10 @@ struct eth_device {
   /* Thread states */
   sim_atomic_value_t reader_state;
   sim_atomic_value_t writer_state;
-
-  /* API functions */
-  /* reader(): Ethernet receiver-specific read function. Does the
-   * poll()/select(), and dispatches a packet if data is available from the
-   * underlying socket. */
-  int (*reader)(ETH_DEV *eth_dev, int ms_timeout);
-  /* reader_shutdown(), writer_shutdown(): Ethernet device-specific shutdown
-   * function. Used by libslirp support to signal the condition variable if
-   * waiting for sockets. Otherwise, a NOP for other Ethernet devices. */
-  void (*reader_shutdown)(void *opaque);
-  void (*writer_shutdown)(void *opaque);
 #endif
+
+  /* API function table: */
+  eth_apifuncs_t api_funcs;
 };
 
 /* prototype declarations*/
@@ -423,6 +549,8 @@ void ethq_insert_data(ETH_QUE* que, int32 type,         /* insert item into FIFO
 t_stat ethq_destroy(ETH_QUE* que);                      /* release FIFO queue */
 const char *eth_capabilities(void);
 t_stat sim_ether_test (DEVICE *dptr, const char *cptr); /* unit test routine */
+
+void sim_eth_callback(ETH_DEV *eth_dev, const uint32 len, const uint32 capture_len, const u_char* data);
 
 #if !defined(SIM_TEST_INIT)     /* Need stubs for test APIs */
 #define SIM_TEST_INIT
