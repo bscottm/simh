@@ -330,6 +330,10 @@ if (WITH_NETWORK)
     ## the libpcap-devel's libraries are found.
     set(network_runtime USE_SHARED)
 
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include"
+    )
+
     set(pcap_platform)
     if (WITH_PCAP)
         find_package(PCAP)
@@ -476,8 +480,6 @@ if (WITH_NETWORK)
         find_path(TAPWINDOWS_HEADER
         NAMES
             tap-windows.h
-        HINTS
-            ENV TAPWINDOWS_DIR
         PATHS
             $(CMAKE_BINARY_DIR)/include
         )
@@ -527,6 +529,7 @@ if (WITH_NETWORK)
         endif ()
 
         simh_network_compile_definitions(PUBLIC WITH_OPENVPN_TAPTUN)
+        simh_network_include_directories(PUBLIC ${CMAKE_BINARY_DIR}/include)
         simh_network_sources(sim_networking/openvpn/listintfs.c sim_networking/openvpn/opentap.c)
     endif ()
 
